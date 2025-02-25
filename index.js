@@ -19,11 +19,13 @@ const app = express();
 //     "mongodb+srv://akr2803:123@ecommerceapplication.ibqdbpv.mongodb.net/?retryWrites=true&w=majority";
 // const DB =
 //     "mongodb://akr2803:123@ac-ieqge19-shard-00-00.ibqdbpv.mongodb.net:27017,ac-ieqge19-shard-00-01.ibqdbpv.mongodb.net:27017,ac-ieqge19-shard-00-02.ibqdbpv.mongodb.net:27017/?ssl=true&replicaSet=atlas-d74wfg-shard-0&authSource=admin&retryWrites=true&w=majority";
-const DB = 'mongodb://localhost:27017/ecommerce';
+const DB =
+	'mongodb+srv://ngoson2k40501:JBsvT5bMBwvqDBU@cluster0.tu8h4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 // middleware
 // CLIENT -> middleware -> SERVER -> CLIENT
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(authRouter);
 app.use(adminRouter);
 app.use(productRouter);
