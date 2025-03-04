@@ -25,7 +25,13 @@ const DB =
 	'mongodb+srv://ngoson2k40501:JBsvT5bMBwvqDBU@cluster0.tu8h4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 // middleware
 // CLIENT -> middleware -> SERVER -> CLIENT
-
+app.use(
+	cors({
+		origin: '*', // For development. In production, specify domains
+		methods: ['GET', 'POST'],
+		allowedHeaders: ['Content-Type', 'Accept', 'x-auth-token'],
+	}),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(debugMiddleware);
