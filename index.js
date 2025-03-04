@@ -12,6 +12,8 @@ const adminRouter = require('./routes/admin');
 const productRouter = require('./routes/product');
 const userRouter = require('./routes/user');
 const debugMiddleware = require('./middlewares/debugMiddleware');
+const ConnectDB = require('./configs/database');
+const testRouter = require('./routes/test');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -26,19 +28,23 @@ const DB =
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(debugMiddleware);
+
+// routing
+app.use(testRouter);
 app.use(authRouter);
 app.use(adminRouter);
 app.use(productRouter);
 app.use(userRouter);
 
-app.use(debugMiddleware);
 // Connecting DB
-mongoose
-	.connect(DB)
-	.then(() => {
-		console.log('DB Connected Successfully');
-	})
-	.catch(e => console.log(e));
+// mongoose
+// 	.connect(DB)
+// 	.then(() => {
+// 		console.log('DB Connected Successfully');
+// 	})
+// 	.catch(e => console.log(e));
+ConnectDB();
 
 //CREATING AN API
 app.listen(PORT, '0.0.0.0', () => {
