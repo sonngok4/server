@@ -14,6 +14,7 @@ const userRouter = require('./routes/user');
 const debugMiddleware = require('./middlewares/debugMiddleware');
 const ConnectDB = require('./configs/database');
 const testRouter = require('./routes/test');
+const cors = require('cors');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
