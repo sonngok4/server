@@ -46,10 +46,12 @@ app.use(userRouter);
 // Connecting DB
 mongoose
 	.connect(DB)
-	.then(() => {
-		console.log('DB Connected Successfully');
+	.then(conn => {
+		console.log(`MongoDB Connected: ${conn.connection.host}`);
 	})
-	.catch(e => console.log(e));
+	.catch(error => {
+		console.error(`Error connecting to MongoDB: ${error.message}`);
+	});
 
 //CREATING AN API
 app.listen(PORT, '0.0.0.0', () => {
