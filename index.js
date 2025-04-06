@@ -17,10 +17,9 @@ const userRouter = require('./routes/user');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
-// const DB =
-//     "mongodb+srv://akr2803:123@ecommerceapplication.ibqdbpv.mongodb.net/?retryWrites=true&w=majority";
+// const DB = 'mongodb://localhost:27017/eshop_db'; // local db
 const DB =
-	'mongodb://akr2803:123@ac-ieqge19-shard-00-00.ibqdbpv.mongodb.net:27017,ac-ieqge19-shard-00-01.ibqdbpv.mongodb.net:27017,ac-ieqge19-shard-00-02.ibqdbpv.mongodb.net:27017/?ssl=true&replicaSet=atlas-d74wfg-shard-0&authSource=admin&retryWrites=true&w=majority';
+	'mongodb+srv://sonngo:songodb@eshop.l8awbmz.mongodb.net/eshop_db?retryWrites=true&w=majority&appName=eshop&ssl=true&ssl_cert_reqs=CERT_NONE';
 
 // middleware
 // CLIENT -> middleware -> SERVER -> CLIENT
