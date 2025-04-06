@@ -66,7 +66,7 @@ adminRouter.post('/delete-product', admin, async (req, res) => {
 });
 
 // change status
-adminRouter.post('/admin/change-order-status', admin, async (req, res) => {
+adminRouter.post('/change-order-status', admin, async (req, res) => {
 	try {
 		const { id, status } = req.body;
 
@@ -82,7 +82,7 @@ adminRouter.post('/admin/change-order-status', admin, async (req, res) => {
 });
 
 //
-adminRouter.get('/admin/get-orders', admin, async (req, res) => {
+adminRouter.get('/get-orders', admin, async (req, res) => {
 	try {
 		const orders = await Order.find({});
 		res.json(orders);
@@ -93,7 +93,7 @@ adminRouter.get('/admin/get-orders', admin, async (req, res) => {
 
 // get order details and sales analysis
 
-adminRouter.get('/admin/analytics', admin, async (req, res) => {
+adminRouter.get('/analytics', admin, async (req, res) => {
 	try {
 		const orders = await Order.find({});
 		let totalEarnings = 0;

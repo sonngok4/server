@@ -55,8 +55,8 @@ authRouter.post('/register', async (req, res) => {
 //SignIn route
 
 authRouter.post('/login', async (req, res) => {
-	console.log('inside signin');
-	console.log(req.body);
+	// console.log('inside signin');
+	// console.log(req.body);
 	try {
 		//object destructuring
 		const { email, password } = req.body;
