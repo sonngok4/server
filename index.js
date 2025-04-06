@@ -59,7 +59,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(debugMiddleware);
+// app.use(debugMiddleware);
 
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
