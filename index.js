@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 // const DB = 'mongodb://localhost:27017/eshop_db'; // local db
 const DB =
-	'mongodb+srv://sonngo:songodb@eshop.l8awbmz.mongodb.net/eshop_db?retryWrites=true&w=majority&appName=eshop&ssl=true&ssl_cert_reqs=CERT_NONE';
+	'mongodb+srv://sonngo:songodb@eshop.l8awbmz.mongodb.net/eshop_db?retryWrites=true&w=majority&appName=eshop';
 
 // middleware
 // CLIENT -> middleware -> SERVER -> CLIENT
