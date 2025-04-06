@@ -4,7 +4,7 @@ const auth = require('../middlewares/auth');
 const { Product } = require('../models/product');
 const User = require('../models/user');
 
-productRouter.get('/api/products/', auth, async (req, res) => {
+productRouter.get('/', auth, async (req, res) => {
 	try {
 		const products = await Product.find({ category: req.query.category });
 		res.json(products);
@@ -15,7 +15,7 @@ productRouter.get('/api/products/', auth, async (req, res) => {
 
 // create a get request to search products and get them
 // /api/products/search/i
-productRouter.get('/api/products/search/:name', auth, async (req, res) => {
+productRouter.get('/search/:name', auth, async (req, res) => {
 	try {
 		const products = await Product.find({
 			name: { $regex: req.params.name, $options: 'i' },
@@ -28,7 +28,7 @@ productRouter.get('/api/products/search/:name', auth, async (req, res) => {
 });
 
 // create a post request route to rate the product
-productRouter.post('/api/rate-product', auth, async (req, res) => {
+productRouter.post('/rate-product', auth, async (req, res) => {
 	try {
 		const { id, rating } = req.body;
 		let product = await Product.findById(id);
@@ -55,7 +55,7 @@ productRouter.post('/api/rate-product', auth, async (req, res) => {
 
 // get request for deal-of-the-day
 
-productRouter.get('/api/deal-of-day', auth, async (req, res) => {
+productRouter.get('/deal-of-day', auth, async (req, res) => {
 	try {
 		let products = await Product.find({});
 
@@ -81,7 +81,7 @@ productRouter.get('/api/deal-of-day', auth, async (req, res) => {
 
 // get all Porducts available
 
-productRouter.get('/api/get-all-products-names', auth, async (req, res) => {
+productRouter.get('/get-all-products-names', auth, async (req, res) => {
 	try {
 		const products = await Product.find({});
 		let productNames = [];
@@ -95,7 +95,7 @@ productRouter.get('/api/get-all-products-names', auth, async (req, res) => {
 	}
 });
 
-productRouter.get('/api/get-user-of-product', auth, async (req, res) => {
+productRouter.get('/get-user-of-product', auth, async (req, res) => {
 	try {
 		// const { id } = req.body;
 		let product = await Product.findById({ id: req.body });
@@ -107,9 +107,9 @@ productRouter.get('/api/get-user-of-product', auth, async (req, res) => {
 			usersList.push(userExist);
 		}
 
-		/* 
+		/*
         
-         for (let i = 0; i < product.ratings.length; i++) {
+        for (let i = 0; i < product.ratings.length; i++) {
             if (product.ratings[i].userId == req.user) {
                 product.ratings.splice(i, 1);
                 break;

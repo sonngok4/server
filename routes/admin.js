@@ -5,7 +5,7 @@ const { Product } = require('../models/product');
 const Order = require('../models/order');
 // adding product
 // you can add all the middlewares here just add them by commas in post method
-adminRouter.post('/admin/add-product', admin, async (req, res) => {
+adminRouter.post('/add-product', admin, async (req, res) => {
 	try {
 		const {
 			name,
@@ -39,7 +39,7 @@ adminRouter.post('/admin/add-product', admin, async (req, res) => {
 // get all products
 // api /admin/get-products
 
-adminRouter.get('/admin/get-products', admin, async (req, res) => {
+adminRouter.get('/get-products', admin, async (req, res) => {
 	try {
 		const products = await Product.find({});
 		// return products to client
@@ -51,7 +51,7 @@ adminRouter.get('/admin/get-products', admin, async (req, res) => {
 });
 
 // delete product
-adminRouter.post('/admin/delete-product', admin, async (req, res) => {
+adminRouter.post('/delete-product', admin, async (req, res) => {
 	try {
 		const { id } = req.body;
 

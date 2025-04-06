@@ -26,22 +26,47 @@ const DB =
 
 app.use(
 	cors({
-		origin: '*',
-		// credentials: true,
+		origin: function(origin, callback) {
+			// Allow requests with no origin (like mobile apps or curl requests)
+			if (!origin) {
+				return callback(null, true);
+			}
+
+			// Allow specific origins
+			const allowedOrigins = [
+				'http://localhost:53492', // Dev web
+				'http://localhost:3000', // Thêm các origin khác nếu cần
+				// Thêm domain production của bạn khi deploy
+			];
+
+			if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+				callback(null, true);
+			} else {
+				callback(new Error('Not allowed by CORS'));
+			}
+		},
+		credentials: true, // Bật credentials
 		methods: ['GET', 'POST', 'PUT', 'DELETE'],
-		allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-auth-token'],
+		allowedHeaders: [
+			'Content-Type',
+			'Authorization',
+			'Accept',
+			'x-auth-token',
+			'credentials',
+		],
 	}),
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// app.use(debugMiddleware);
+app.use(debugMiddleware);
 
-app.use(authRouter);
-app.use(adminRouter);
-app.use(productRouter);
-app.use(userRouter);
-
+app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/products', productRouter);
+app.use('/api/users', userRouter);
+// app.use('/api/cart', cartRouter);
+// app.use('/api/orders', orderRouter);
 // Connecting DB
 mongoose
 	.connect(DB)

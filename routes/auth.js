@@ -3,12 +3,11 @@ const jwt = require('jsonwebtoken');
 const authRouter = express.Router();
 const bcryptjs = require('bcryptjs');
 const User = require('../models/user');
-const auth = require('../middlewares/auth');
 
 //SignUp route
 
 // when admin will come it'll be authRouter.post('/admin/signup')
-authRouter.post('/api/signup', async (req, res) => {
+authRouter.post('/register', async (req, res) => {
 	// GET the data from the client
 	//getting the data in the form of object from req.body
 	/*
@@ -18,9 +17,6 @@ authRouter.post('/api/signup', async (req, res) => {
         "password" : password
     }
     
-    In JavaScript we can directly access these values 
-    by using keys like below
-    (make sure keys don't have typing errors) 
     */
 
 	try {
@@ -58,7 +54,7 @@ authRouter.post('/api/signup', async (req, res) => {
 
 //SignIn route
 
-authRouter.post('/api/signin', async (req, res) => {
+authRouter.post('/login', async (req, res) => {
 	console.log('inside signin');
 	console.log(req.body);
 	try {
@@ -128,10 +124,5 @@ authRouter.post('/tokenIsValid', async (req, res) => {
 	}
 });
 
-//Get user data
-authRouter.get('/', auth, async (req, res) => {
-	const user = await User.findById(req.user);
-	res.json({ ...user._doc, token: req.token });
-});
 
 module.exports = authRouter;

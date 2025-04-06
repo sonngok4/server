@@ -5,8 +5,15 @@ const auth = require('../middlewares/auth');
 const { Product } = require('../models/product');
 const Order = require('../models/order');
 
+//Get user data
+userRouter.get('/me', auth, async (req, res) => {
+	const user = await User.findById(req.user);
+
+	res.json({ ...user._doc, token: req.token });
+});
+
 // add item to cart
-userRouter.post('/api/add-to-cart', auth, async (req, res) => {
+userRouter.post('/add-to-cart', auth, async (req, res) => {
 	try {
 		const { id } = req.body;
 		const product = await Product.findById(id);
@@ -54,7 +61,7 @@ userRouter.post('/api/add-to-cart', auth, async (req, res) => {
 });
 
 // add item to wishList
-userRouter.post('/api/add-to-wishList', auth, async (req, res) => {
+userRouter.post('/add-to-wishList', auth, async (req, res) => {
 	try {
 		const { id } = req.body;
 		const product = await Product.findById(id);
@@ -95,7 +102,7 @@ userRouter.post('/api/add-to-wishList', auth, async (req, res) => {
 });
 
 // remove item from wish list
-userRouter.delete('/api/remove-from-wishList/:id', auth, async (req, res) => {
+userRouter.delete('/remove-from-wishList/:id', auth, async (req, res) => {
 	try {
 		const { id } = req.params;
 		//same thing
@@ -125,7 +132,7 @@ userRouter.delete('/api/remove-from-wishList/:id', auth, async (req, res) => {
 });
 
 // add profile picture
-userRouter.post('/api/add-profile-picture', auth, async (req, res) => {
+userRouter.post('/add-profile-picture', auth, async (req, res) => {
 	const { imageUrl } = req.body;
 	let user = await User.findById(req.user);
 
@@ -136,7 +143,7 @@ userRouter.post('/api/add-profile-picture', auth, async (req, res) => {
 });
 
 // do not forget to add the colon :  before id in the url
-userRouter.delete('/api/remove-from-cart/:id', auth, async (req, res) => {
+userRouter.delete('/remove-from-cart/:id', auth, async (req, res) => {
 	try {
 		console.log('inside remove cart function');
 		const { id } = req.params;
@@ -173,7 +180,7 @@ userRouter.delete('/api/remove-from-cart/:id', auth, async (req, res) => {
 
 // remove search history item
 
-userRouter.post('/api/delete-search-history-item', auth, async (req, res) => {
+userRouter.post('/delete-search-history-item', auth, async (req, res) => {
 	try {
 		const { deleteQuery } = req.body;
 		let user = await User.findById(req.user);
@@ -194,7 +201,7 @@ userRouter.post('/api/delete-search-history-item', auth, async (req, res) => {
 
 // save user address
 
-userRouter.post('/api/save-user-address', auth, async (req, res) => {
+userRouter.post('/save-user-address', auth, async (req, res) => {
 	try {
 		const { address } = req.body;
 		let user = await User.findById(req.user);
@@ -208,7 +215,7 @@ userRouter.post('/api/save-user-address', auth, async (req, res) => {
 
 // order product
 
-userRouter.post('/api/order', auth, async (req, res) => {
+userRouter.post('/place-order', auth, async (req, res) => {
 	try {
 		// const { id } = req.body;
 		const { cart, totalPrice, address } = req.body;
@@ -249,7 +256,7 @@ userRouter.post('/api/order', auth, async (req, res) => {
 
 // getting all orders
 
-userRouter.get('/api/orders/me', auth, async (req, res) => {
+userRouter.get('/orders/me', auth, async (req, res) => {
 	try {
 		// const { id } = req.body;
 		let orders = await Order.find({ userId: req.user });
@@ -262,7 +269,7 @@ userRouter.get('/api/orders/me', auth, async (req, res) => {
 
 // search history
 
-userRouter.post('/api/search-history', auth, async (req, res) => {
+userRouter.post('/add-to-search-history', auth, async (req, res) => {
 	try {
 		const { searchQuery } = req.body;
 
@@ -280,7 +287,7 @@ userRouter.post('/api/search-history', auth, async (req, res) => {
 	}
 });
 
-userRouter.get('/api/get-search-history', auth, async (req, res) => {
+userRouter.get('/get-search-history', auth, async (req, res) => {
 	try {
 		let user = await User.findById(req.user);
 		let searchHistory = [];
@@ -298,7 +305,7 @@ userRouter.get('/api/get-search-history', auth, async (req, res) => {
 });
 
 // getting wishList
-userRouter.get('/api/get-wishList', auth, async (req, res) => {
+userRouter.get('/get-wishList', auth, async (req, res) => {
 	try {
 		let user = User.findById(req.user);
 		let wishList = [];
