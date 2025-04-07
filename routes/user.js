@@ -4,6 +4,7 @@ const User = require('../models/user');
 const auth = require('../middlewares/auth');
 const { Product } = require('../models/product');
 const Order = require('../models/order');
+const cloudinary = require('../configs/cloudinary');
 
 //Get user data
 userRouter.get('/me', auth, async (req, res) => {
@@ -136,26 +137,25 @@ userRouter.post('/add-profile-picture', auth, async (req, res) => {
 	try {
 		const { image, folder } = req.body;
 		let user = await User.findById(req.user);
+		console.log(`User before update: ${user.name}, imageUrl: ${user.imageUrl}`);
 
 		// If there's an old image URL, delete it from Cloudinary
 		if (user.imageUrl && user.imageUrl !== '') {
 			try {
 				// Extract the public ID from the Cloudinary URL
-				const urlParts = user.imageUrl.split('/');
-				const eshopIndex = urlParts.findIndex(part => part === 'eshop');
+				const uri = new URL(user.imageUrl);
+				const pathSegment = uri.pathname.split('/');
+				const eshopIndex = pathSegment.findIndex(part => part === 'eshop');
 
 				if (eshopIndex !== -1) {
 					// Construct the public ID
-					const publicIdParts = urlParts.slice(eshopIndex);
-					const publicId = publicIdParts.join('/').split('.')[0]; // Remove file extension
-
-					// Delete the image from Cloudinary using the Admin API
-					const cloudinary = require('cloudinary').v2;
-					cloudinary.config({
-						cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-						api_key: process.env.CLOUDINARY_API_KEY,
-						api_secret: process.env.CLOUDINARY_API_SECRET,
-					});
+					const publicIdParts = pathSegment.slice(eshopIndex).join('/');
+					const publicIdWithoutExtension = publicIdParts.substring(
+						0,
+						publicIdParts.lastIndexOf('.'),
+					);
+					const publicId = publicIdWithoutExtension;
+	
 
 					await cloudinary.uploader.destroy(publicId);
 					console.log(`Deleted old profile picture: ${publicId}`);
@@ -165,14 +165,6 @@ userRouter.post('/add-profile-picture', auth, async (req, res) => {
 				// Continue with the update even if deletion fails
 			}
 		}
-
-		// Upload the new image to Cloudinary
-		const cloudinary = require('cloudinary').v2;
-		cloudinary.config({
-			cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-			api_key: process.env.CLOUDINARY_API_KEY,
-			api_secret: process.env.CLOUDINARY_API_SECRET,
-		});
 
 		const uploadFolder =
 			folder || `eshop/User_Profile_Pictures/${user.email}/${user.name}`;
