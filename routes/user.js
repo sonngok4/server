@@ -134,14 +134,14 @@ userRouter.delete('/remove-from-wishList/:id', auth, async (req, res) => {
 // add profile picture
 userRouter.post('/add-profile-picture', auth, async (req, res) => {
 	try {
-		const { imageUrl, oldImageUrl } = req.body;
+		const { image, folder } = req.body;
 		let user = await User.findById(req.user);
 
 		// If there's an old image URL, delete it from Cloudinary
-		if (oldImageUrl && oldImageUrl !== '') {
+		if (user.imageUrl && user.imageUrl !== '') {
 			try {
 				// Extract the public ID from the Cloudinary URL
-				const urlParts = oldImageUrl.split('/');
+				const urlParts = user.imageUrl.split('/');
 				const eshopIndex = urlParts.findIndex(part => part === 'eshop');
 
 				if (eshopIndex !== -1) {
@@ -152,7 +152,7 @@ userRouter.post('/add-profile-picture', auth, async (req, res) => {
 					// Delete the image from Cloudinary using the Admin API
 					const cloudinary = require('cloudinary').v2;
 					cloudinary.config({
-						cloud_name: 'dfwunotsm',
+						cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
 						api_key: process.env.CLOUDINARY_API_KEY,
 						api_secret: process.env.CLOUDINARY_API_SECRET,
 					});
@@ -166,8 +166,23 @@ userRouter.post('/add-profile-picture', auth, async (req, res) => {
 			}
 		}
 
-		// Update the imageUrl field
-		user.imageUrl = imageUrl;
+		// Upload the new image to Cloudinary
+		const cloudinary = require('cloudinary').v2;
+		cloudinary.config({
+			cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+			api_key: process.env.CLOUDINARY_API_KEY,
+			api_secret: process.env.CLOUDINARY_API_SECRET,
+		});
+
+		const uploadFolder =
+			folder || `eshop/User_Profile_Pictures/${user.email}/${user.name}`;
+		const result = await cloudinary.uploader.upload(image, {
+			folder: uploadFolder,
+			resource_type: 'auto',
+		});
+
+		// Update the imageUrl field with the new Cloudinary URL
+		user.imageUrl = result.secure_url;
 
 		// Save the user with the new imageUrl
 		user = await user.save();
