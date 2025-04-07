@@ -19,8 +19,6 @@ const userRouter = require('./routes/user');
 const PORT = process.env.PORT || 3000;
 const app = express();
 // const DB = 'mongodb://localhost:27017/eshop_db'; // local db
-const DB =
-	'mongodb+srv://sonngo:songodb@eshop.l8awbmz.mongodb.net/eshop_db?retryWrites=true&w=majority&appName=eshop';
 
 // middleware
 // CLIENT -> middleware -> SERVER -> CLIENT
@@ -70,7 +68,7 @@ app.use('/api/users', userRouter);
 // app.use('/api/orders', orderRouter);
 // Connecting DB
 mongoose
-	.connect(DB)
+	.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/eshop_db')
 	.then(conn => {
 		console.log(`MongoDB Connected: ${conn.connection.host}`);
 	})
