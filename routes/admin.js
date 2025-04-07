@@ -123,7 +123,7 @@ adminRouter.get('/get-products', admin, async (req, res) => {
 adminRouter.post('/delete-product', admin, async (req, res) => {
 	try {
 		const { id, publicIds } = req.body;
-		
+
 		// Xóa ảnh trên Cloudinary
 		if (publicIds && publicIds.length > 0) {
 			for (const publicId of publicIds) {

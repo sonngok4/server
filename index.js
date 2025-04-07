@@ -7,6 +7,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const dotenv = require('dotenv');
+dotenv.config();
 const debugMiddleware = require('./middlewares/debugMiddleware');
 
 // IMPORTS FROM OTHER FILES
@@ -58,7 +60,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// app.use(debugMiddleware);
+app.use(debugMiddleware);
 
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
@@ -68,12 +70,17 @@ app.use('/api/users', userRouter);
 // app.use('/api/orders', orderRouter);
 // Connecting DB
 mongoose
-	.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/eshop_db')
+	.connect(`${process.env.MONGODB_URI}`, {
+		useNewUrlParser: true,
+		useUnifiedTopology: true,
+	})
 	.then(conn => {
 		console.log(`MongoDB Connected: ${conn.connection.host}`);
 	})
 	.catch(error => {
 		console.error(`Error connecting to MongoDB: ${error.message}`);
+		console.log(`${process.env.MONGODB_URI}`);
+		
 	});
 
 app.get('/', (req, res) => {
