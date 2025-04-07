@@ -52,50 +52,46 @@ adminRouter.put('/update-product', admin, async (req, res) => {
 			imagesToDelete,
 		} = req.body;
 
-		// Xóa ảnh cũ trên Cloudinary nếu có
-		if (imagesToDelete && imagesToDelete.length > 0) {
-			for (const publicId of imagesToDelete) {
-				try {
-					await cloudinary.uploader.destroy(publicId);
-				} catch (error) {
-					console.error(
-						`Error deleting image with public_id ${publicId}:`,
-						error,
-					);
-					// Tiếp tục xóa các ảnh khác ngay cả khi một ảnh gặp lỗi
-				}
-			}
-		}
-
-		// Find the product by ID and update it
+		// Find the product first
 		const product = await Product.findById(id);
-
 		if (!product) {
 			return res.status(404).json({ error: 'Product not found' });
 		}
 
+		// Delete old images from Cloudinary if any
+		if (imagesToDelete && imagesToDelete.length > 0) {
+			for (const imageUrl of imagesToDelete) {
+				try {
+					// Extract public_id from URL
+					const uri = new URL(imageUrl);
+					const pathSegments = uri.pathname.split('/');
+					const eshopIndex = pathSegments.findIndex(
+						segment => segment === 'eshop',
+					);
+
+					if (eshopIndex !== -1) {
+						const publicId = pathSegments.slice(eshopIndex).join('/');
+						const publicIdWithoutExtension = publicId.substring(
+							0,
+							publicId.lastIndexOf('.'),
+						);
+						await cloudinary.uploader.destroy(publicIdWithoutExtension);
+					}
+				} catch (error) {
+					console.error(`Error deleting image ${imageUrl}:`, error);
+					// Continue with other images even if one fails
+				}
+			}
+		}
+
 		// Update the product fields
-		if (name) {
-			product.name = name;
-		}
-		if (description) {
-			product.description = description;
-		}
-		if (brandName) {
-			product.brandName = brandName;
-		}
-		if (images) {
-			product.images = images;
-		}
-		if (quantity) {
-			product.quantity = quantity;
-		}
-		if (price) {
-			product.price = price;
-		}
-		if (category) {
-			product.category = category;
-		}
+		if (name) product.name = name;
+		if (description) product.description = description;
+		if (brandName) product.brandName = brandName;
+		if (images) product.images = images;
+		if (quantity) product.quantity = quantity;
+		if (price) product.price = price;
+		if (category) product.category = category;
 
 		// Save the updated product
 		const updatedProduct = await product.save();
@@ -122,25 +118,44 @@ adminRouter.get('/get-products', admin, async (req, res) => {
 // delete product
 adminRouter.post('/delete-product', admin, async (req, res) => {
 	try {
-		const { id, publicIds } = req.body;
+		const { id, imageUrls } = req.body;
 
-		// Xóa ảnh trên Cloudinary
-		if (publicIds && publicIds.length > 0) {
-			for (const publicId of publicIds) {
+		// Get the product first to ensure it exists
+		const product = await Product.findById(id);
+		if (!product) {
+			return res.status(404).json({ error: 'Product not found' });
+		}
+
+		// Delete images from Cloudinary
+		if (imageUrls && imageUrls.length > 0) {
+			for (const imageUrl of imageUrls) {
 				try {
-					await cloudinary.uploader.destroy(publicId);
-				} catch (error) {
-					console.error(
-						`Error deleting image with public_id ${publicId}:`,
-						error,
+					// Extract public_id from URL
+					const uri = new URL(imageUrl);
+					const pathSegments = uri.pathname.split('/');
+					const eshopIndex = pathSegments.findIndex(
+						segment => segment === 'eshop',
 					);
+
+					if (eshopIndex !== -1) {
+						const publicId = pathSegments.slice(eshopIndex).join('/');
+						const publicIdWithoutExtension = publicId.substring(
+							0,
+							publicId.lastIndexOf('.'),
+						);
+						await cloudinary.uploader.destroy(publicIdWithoutExtension);
+					}
+				} catch (error) {
+					console.error(`Error deleting image ${imageUrl}:`, error);
+					// Continue with other images even if one fails
 				}
 			}
 		}
 
-		let product = await Product.findByIdAndDelete(id);
+		// Delete the product from database
+		await Product.findByIdAndDelete(id);
 
-		res.json(product);
+		res.json({ message: 'Product deleted successfully' });
 	} catch (e) {
 		return res.status(500).json({ error: e.message });
 	}
