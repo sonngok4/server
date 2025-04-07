@@ -16,7 +16,7 @@ const authRouter = require('./routes/auth');
 const adminRouter = require('./routes/admin');
 const productRouter = require('./routes/product');
 const userRouter = require('./routes/user');
-
+const uploadRouter = require('./routes/upload');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -66,6 +66,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/products', productRouter);
 app.use('/api/users', userRouter);
+app.use('/api/upload', uploadRouter);
 // app.use('/api/cart', cartRouter);
 // app.use('/api/orders', orderRouter);
 // Connecting DB
@@ -80,7 +81,6 @@ mongoose
 	.catch(error => {
 		console.error(`Error connecting to MongoDB: ${error.message}`);
 		console.log(`${process.env.MONGODB_URI}`);
-		
 	});
 
 app.get('/', (req, res) => {

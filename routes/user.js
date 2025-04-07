@@ -133,13 +133,52 @@ userRouter.delete('/remove-from-wishList/:id', auth, async (req, res) => {
 
 // add profile picture
 userRouter.post('/add-profile-picture', auth, async (req, res) => {
-	const { imageUrl } = req.body;
-	let user = await User.findById(req.user);
+	try {
+		const { imageUrl, oldImageUrl } = req.body;
+		let user = await User.findById(req.user);
 
-	user.imageUrl = imageUrl;
+		// If there's an old image URL, delete it from Cloudinary
+		if (oldImageUrl && oldImageUrl !== '') {
+			try {
+				// Extract the public ID from the Cloudinary URL
+				const urlParts = oldImageUrl.split('/');
+				const eshopIndex = urlParts.findIndex(part => part === 'eshop');
 
-	user = await user.save();
-	res.json(user);
+				if (eshopIndex !== -1) {
+					// Construct the public ID
+					const publicIdParts = urlParts.slice(eshopIndex);
+					const publicId = publicIdParts.join('/').split('.')[0]; // Remove file extension
+
+					// Delete the image from Cloudinary using the Admin API
+					const cloudinary = require('cloudinary').v2;
+					cloudinary.config({
+						cloud_name: 'dfwunotsm',
+						api_key: process.env.CLOUDINARY_API_KEY,
+						api_secret: process.env.CLOUDINARY_API_SECRET,
+					});
+
+					await cloudinary.uploader.destroy(publicId);
+					console.log(`Deleted old profile picture: ${publicId}`);
+				}
+			} catch (deleteError) {
+				console.error('Error deleting old profile picture:', deleteError);
+				// Continue with the update even if deletion fails
+			}
+		}
+
+		// Update the imageUrl field
+		user.imageUrl = imageUrl;
+
+		// Save the user with the new imageUrl
+		user = await user.save();
+		console.log(`User after update: ${user.name}, imageUrl: ${user.imageUrl}`);
+
+		// Return the updated user object
+		res.json(user);
+	} catch (e) {
+		console.error('Error updating profile picture:', e);
+		res.status(500).json({ error: e.message });
+	}
 });
 
 // do not forget to add the colon :  before id in the url
