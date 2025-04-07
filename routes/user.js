@@ -145,20 +145,29 @@ userRouter.post('/add-profile-picture', auth, async (req, res) => {
 				// Extract the public ID from the Cloudinary URL
 				const uri = new URL(user.imageUrl);
 				const pathSegment = uri.pathname.split('/');
+
+				// Find the index of the last segment before the file extension
+				const lastSegmentIndex = pathSegment.length - 1;
+				const lastSegment = pathSegment[lastSegmentIndex];
+
+				// Remove the file extension to get the public ID
+				const publicId = lastSegment.substring(0, lastSegment.lastIndexOf('.'));
+
+				// Get the folder path (everything after 'eshop/')
 				const eshopIndex = pathSegment.findIndex(part => part === 'eshop');
-
 				if (eshopIndex !== -1) {
-					// Construct the public ID
-					const publicIdParts = pathSegment.slice(eshopIndex).join('/');
-					const publicIdWithoutExtension = publicIdParts.substring(
-						0,
-						publicIdParts.lastIndexOf('.'),
-					);
-					const publicId = publicIdWithoutExtension;
-	
+					const folderPath = pathSegment
+						.slice(eshopIndex + 1, lastSegmentIndex)
+						.join('/');
+					const fullPublicId = `${folderPath}/${publicId}`;
 
-					await cloudinary.uploader.destroy(publicId);
-					console.log(`Deleted old profile picture: ${publicId}`);
+					console.log(
+						`Attempting to delete old profile picture with public ID: ${fullPublicId}`,
+					);
+					await cloudinary.uploader.destroy(fullPublicId);
+					console.log(
+						`Successfully deleted old profile picture: ${fullPublicId}`,
+					);
 				}
 			} catch (deleteError) {
 				console.error('Error deleting old profile picture:', deleteError);
