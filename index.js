@@ -15,6 +15,7 @@ const adminRouter = require('./routes/admin');
 const productRouter = require('./routes/product');
 const userRouter = require('./routes/user');
 
+
 const PORT = process.env.PORT || 3000;
 const app = express();
 // const DB = 'mongodb://localhost:27017/eshop_db'; // local db
@@ -77,6 +78,9 @@ mongoose
 		console.error(`Error connecting to MongoDB: ${error.message}`);
 	});
 
+app.get('/', (req, res) => {
+	res.send('Hello World');
+});
 //CREATING AN API
 app.listen(PORT, '0.0.0.0', () => {
 	console.log(`Listening at PORT ${PORT}`);

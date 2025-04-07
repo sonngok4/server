@@ -3,6 +3,7 @@ const adminRouter = express.Router();
 const admin = require('../middlewares/admin');
 const { Product } = require('../models/product');
 const Order = require('../models/order');
+const cloudinary = require('../configs/cloudinary');
 // adding product
 // you can add all the middlewares here just add them by commas in post method
 adminRouter.post('/add-product', admin, async (req, res) => {
@@ -48,7 +49,23 @@ adminRouter.put('/update-product', admin, async (req, res) => {
 			quantity,
 			price,
 			category,
+			imagesToDelete,
 		} = req.body;
+
+		// Xóa ảnh cũ trên Cloudinary nếu có
+		if (imagesToDelete && imagesToDelete.length > 0) {
+			for (const publicId of imagesToDelete) {
+				try {
+					await cloudinary.uploader.destroy(publicId);
+				} catch (error) {
+					console.error(
+						`Error deleting image with public_id ${publicId}:`,
+						error,
+					);
+					// Tiếp tục xóa các ảnh khác ngay cả khi một ảnh gặp lỗi
+				}
+			}
+		}
 
 		// Find the product by ID and update it
 		const product = await Product.findById(id);
@@ -105,12 +122,24 @@ adminRouter.get('/get-products', admin, async (req, res) => {
 // delete product
 adminRouter.post('/delete-product', admin, async (req, res) => {
 	try {
-		const { id } = req.body;
+		const { id, publicIds } = req.body;
+		
+		// Xóa ảnh trên Cloudinary
+		if (publicIds && publicIds.length > 0) {
+			for (const publicId of publicIds) {
+				try {
+					await cloudinary.uploader.destroy(publicId);
+				} catch (error) {
+					console.error(
+						`Error deleting image with public_id ${publicId}:`,
+						error,
+					);
+				}
+			}
+		}
 
 		let product = await Product.findByIdAndDelete(id);
 
-		// no need to save it will be done by findByIdAndDelete()
-		// product = await product.save();
 		res.json(product);
 	} catch (e) {
 		return res.status(500).json({ error: e.message });
