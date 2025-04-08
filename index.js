@@ -24,7 +24,6 @@ const app = express();
 
 // middleware
 // CLIENT -> middleware -> SERVER -> CLIENT
-
 app.use(
 	cors({
 		origin: function(origin, callback) {
@@ -33,14 +32,10 @@ app.use(
 				return callback(null, true);
 			}
 
-			// Allow specific origins
-			const allowedOrigins = [
-				'http://localhost:53492', // Dev web
-				'http://localhost:3000', // Thêm các origin khác nếu cần
-				// Thêm domain production của bạn khi deploy
-			];
+			// Cho phép mọi localhost với bất kỳ port nào
+			const localhostRegex = /^http:\/\/localhost:\d+$/;
 
-			if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+			if (localhostRegex.test(origin)) {
 				callback(null, true);
 			} else {
 				callback(new Error('Not allowed by CORS'));
@@ -57,6 +52,7 @@ app.use(
 		],
 	}),
 );
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
