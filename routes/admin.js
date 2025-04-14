@@ -62,21 +62,10 @@ adminRouter.put('/update-product', admin, async (req, res) => {
 		if (imagesToDelete && imagesToDelete.length > 0) {
 			for (const imageUrl of imagesToDelete) {
 				try {
-					// Extract public_id from URL
-					const uri = new URL(imageUrl);
-					const pathSegments = uri.pathname.split('/');
-					const eshopIndex = pathSegments.findIndex(
-						segment => segment === 'eshop',
-					);
 
-					if (eshopIndex !== -1) {
-						const publicId = pathSegments.slice(eshopIndex).join('/');
-						const publicIdWithoutExtension = publicId.substring(
-							0,
-							publicId.lastIndexOf('.'),
-						);
+
+						const publicId = 
 						await cloudinary.uploader.destroy(publicIdWithoutExtension);
-					}
 				} catch (error) {
 					console.error(`Error deleting image ${imageUrl}:`, error);
 					// Continue with other images even if one fails
