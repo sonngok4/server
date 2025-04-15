@@ -62,6 +62,7 @@ adminRouter.put('/update-product', admin, async (req, res) => {
 		if (imagesToDelete && imagesToDelete.length > 0) {
 			for (const imageUrl of imagesToDelete) {
 				try {
+					
 					const publicId = await cloudinary.uploader.destroy(
 						publicIdWithoutExtension,
 					);
