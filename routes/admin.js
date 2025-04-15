@@ -62,10 +62,9 @@ adminRouter.put('/update-product', admin, async (req, res) => {
 		if (imagesToDelete && imagesToDelete.length > 0) {
 			for (const imageUrl of imagesToDelete) {
 				try {
-
-
-						const publicId = 
-						await cloudinary.uploader.destroy(publicIdWithoutExtension);
+					const publicId = await cloudinary.uploader.destroy(
+						publicIdWithoutExtension,
+					);
 				} catch (error) {
 					console.error(`Error deleting image ${imageUrl}:`, error);
 					// Continue with other images even if one fails
@@ -107,7 +106,7 @@ adminRouter.get('/get-products', admin, async (req, res) => {
 // delete product
 adminRouter.post('/delete-product', admin, async (req, res) => {
 	try {
-		const { id, imageUrls } = req.body;
+		const { id } = req.body;
 
 		// Get the product first to ensure it exists
 		const product = await Product.findById(id);
@@ -116,28 +115,17 @@ adminRouter.post('/delete-product', admin, async (req, res) => {
 		}
 
 		// Delete images from Cloudinary
-		if (imageUrls && imageUrls.length > 0) {
-			for (const imageUrl of imageUrls) {
-				try {
-					// Extract public_id from URL
-					const uri = new URL(imageUrl);
-					const pathSegments = uri.pathname.split('/');
-					const eshopIndex = pathSegments.findIndex(
-						segment => segment === 'eshop',
-					);
+		// Get all images from the product
+		const { images } = product;
+		for (const image of images) {
+			try {
+				const { public_id } = image;
 
-					if (eshopIndex !== -1) {
-						const publicId = pathSegments.slice(eshopIndex).join('/');
-						const publicIdWithoutExtension = publicId.substring(
-							0,
-							publicId.lastIndexOf('.'),
-						);
-						await cloudinary.uploader.destroy(publicIdWithoutExtension);
-					}
-				} catch (error) {
-					console.error(`Error deleting image ${imageUrl}:`, error);
-					// Continue with other images even if one fails
-				}
+				await cloudinary.api.delete_resources_by_prefix(public_id);
+				await cloudinary.api.delete_folder(public_id);
+			} catch (error) {
+				console.error(`Error deleting image ${image}:`, error);
+				// Continue with other images even if one fails
 			}
 		}
 

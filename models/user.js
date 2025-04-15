@@ -11,42 +11,16 @@ const userSchema = mongoose.Schema({
 		required: true,
 		type: String,
 		trim: true,
-		validate: {
-			validator: value => {
-				/*
-            const re =/^(([^<>()[\]\.,;:\s@\"]+(\.[^<>()[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/;
-
-           */
-				const re = /^(([^<>()[\]\.,;:\s@\"]+(\.[^<>()[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/;
-
-				console.log(
-					'==================> validating email address <==================',
-				);
-				return value.match(re);
-			},
-			message: 'Please enter a valid email address',
-		},
 	},
 	password: {
 		required: true,
 		type: String,
-		/*
-            validate :  {
-                validator : (value) => {
-                    const re =/^(([^<>()[\]\.,;:\s@\"]+(\.[^<>()[\ ]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i;
-                
-                    return value.length > 6;
-                },
-                message : 'Please enter a longer paswword',
-            },
-        */
 	},
 
 	address: {
 		type: String,
 		default: '',
 	},
-	//you can add seller part here
 	type: {
 		type: String,
 		default: 'user',

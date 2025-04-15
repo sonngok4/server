@@ -1,55 +1,55 @@
-const mongoose = require("mongoose");
-const ratingSchema = require("./rating");
+const mongoose = require('mongoose');
+const ratingSchema = require('./rating');
 
 const productSchema = mongoose.Schema({
-    name: {
-        type: String,
-        required: true,
-        trim: true,
-    },
+	name: {
+		type: String,
+		required: true,
+		trim: true,
+	},
 
-    description: {
-        type: String,
-        required: true,
-        trim: true,
-    },
+	description: {
+		type: String,
+		required: true,
+		trim: true,
+	},
 
-    brandName: {
-        type: String,
-        required: true,
-        trim: true,
-    },
+	brandName: {
+		type: String,
+		required: true,
+		trim: true,
+	},
 
-    images: [
-        {
-            public_id: {
-            type: String,
-            required: true,
-        },
-        url: {
-            type: String,
-            required: true,
-        },
-        }
-    ],
+	images: [
+		{
+			public_id: {
+				type: String,
+				required: true,
+			},
+			url: {
+				type: String,
+				required: true,
+			},
+		},
+	],
 
-    quantity: {
-        type: Number,
-        required: true,
-    },
+	quantity: {
+		type: Number,
+		required: true,
+	},
 
-    price: {
-        type: Number,
-        required: true,
-    },
+	price: {
+		type: Number,
+		required: true,
+	},
 
-    category: {
-        type: String,
-        required: true,
-    },
+	category: {
+		type: String,
+		required: true,
+	},
 
-    ratings: [ratingSchema],
+	ratings: [ratingSchema],
 });
-const Product = mongoose.model("Product", productSchema);
+const Product = mongoose.model('Product', productSchema);
 
 module.exports = { Product, productSchema };

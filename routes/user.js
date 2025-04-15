@@ -137,17 +137,41 @@ userRouter.post('/add-profile-picture', auth, async (req, res) => {
 	try {
 		const { image, folder } = req.body;
 		let user = await User.findById(req.user);
+		console.log(`User before update: ${user.name}, imageUrl: ${user.imageUrl}`);
 
-		// Delete old avatar if exists
-		if (user.avatar.length > 0) {
+		// If there's an old image URL, delete it from Cloudinary
+		if (user.imageUrl && user.imageUrl !== '') {
 			try {
-				const oldAvatar = user.avatar[0];
-				const publicId = oldAvatar.public_id;
+				// Extract the public ID from the Cloudinary URL
+				const uri = new URL(user.imageUrl);
+				const pathSegment = uri.pathname.split('/');
 
-					await cloudinary.uploader.destroy(publicId);
-					console.log(`Deleted old avatar: ${publicId}`);
-			} catch (err) {
-				console.error('Error deleting old avatar:', err);
+				// Find the index of the last segment before the file extension
+				const lastSegmentIndex = pathSegment.length - 1;
+				const lastSegment = pathSegment[lastSegmentIndex];
+
+				// Remove the file extension to get the public ID
+				const publicId = lastSegment.substring(0, lastSegment.lastIndexOf('.'));
+
+				// Get the folder path (everything after 'eshop/')
+				const eshopIndex = pathSegment.findIndex(part => part === 'eshop');
+				if (eshopIndex !== -1) {
+					const folderPath = pathSegment
+						.slice(eshopIndex + 1, lastSegmentIndex)
+						.join('/');
+					const fullPublicId = `${folderPath}/${publicId}`;
+
+					console.log(
+						`Attempting to delete old profile picture with public ID: ${fullPublicId}`,
+					);
+					await cloudinary.uploader.destroy(fullPublicId);
+					console.log(
+						`Successfully deleted old profile picture: ${fullPublicId}`,
+					);
+				}
+			} catch (deleteError) {
+				console.error('Error deleting old profile picture:', deleteError);
+				// Continue with the update even if deletion fails
 			}
 		}
 
@@ -158,25 +182,20 @@ userRouter.post('/add-profile-picture', auth, async (req, res) => {
 			resource_type: 'auto',
 		});
 
-		const { secure_url, public_id } = result;
+		// Update the imageUrl field with the new Cloudinary URL
+		user.imageUrl = result.secure_url;
 
-		// Set new avatar
-		user.avatar = [
-			{
-				public_id,
-				url: secure_url,
-			},
-		];
-
+		// Save the user with the new imageUrl
 		user = await user.save();
+		console.log(`User after update: ${user.name}, imageUrl: ${user.imageUrl}`);
 
+		// Return the updated user object
 		res.json(user);
 	} catch (e) {
 		console.error('Error updating profile picture:', e);
 		res.status(500).json({ error: e.message });
 	}
 });
-
 
 // do not forget to add the colon :  before id in the url
 userRouter.delete('/remove-from-cart/:id', auth, async (req, res) => {
