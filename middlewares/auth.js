@@ -1,27 +1,29 @@
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
+const User = require('../models/user');
+const { sendError } = require('../utils/responseUtils');
 
-const auth = async (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
 	try {
-		const token = req.header('x-auth-token');
+		const authHeader = req.headers.authorization;
+		const token = authHeader && authHeader.split(' ')[1];
+
 		if (!token) {
-			return res.status(401).json({ msg: 'No Auth token, access denied' });
+			return sendError(res, 'Access denied. No token provided.', 401);
 		}
 
-		const verified = jwt.verify(token, 'passwordKey');
-		//if token does not match, i.e. not verified
-		if (!verified) {
-			return res.status(401).json({
-				msg: 'Token verification failed, authorization denied',
-			});
+		const decoded = jwt.verify(token, process.env.JWT_SECRET);
+		const user = await User.findById(decoded.userId).select('-password');
+
+		if (!user) {
+			return sendError(res, 'Invalid token. User not found.', 401);
 		}
 
-		req.user = verified.id;
-		req.token = token;
-		//IMPORTANT to add next()
+		req.user = user;
 		next();
-	} catch (e) {
-		res.status(500).json({ error: e.message });
+	} catch (error) {
+		return sendError(res, 'Invalid token', 401);
 	}
 };
 
-module.exports = auth;
+module.exports = authenticateToken;

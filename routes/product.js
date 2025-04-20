@@ -1,61 +1,39 @@
 const express = require('express');
 const productRouter = express.Router();
-const auth = require('../middlewares/auth');
-const { Product } = require('../models/product');
-const User = require('../models/user');
+const Product = require('../models/product');
+const authenticateToken = require('../middlewares/auth');
+const { sendSuccess, sendError } = require('../utils/responseUtils');
 
-productRouter.get('/', auth, async (req, res) => {
+productRouter.get('/', async (req, res) => {
 	try {
-		const products = await Product.find({ category: req.query.category });
-		res.json(products);
+		let query = {};
+		if (req.query?.category) {
+			query.category = req.query.category;
+		}
+		const products = await Product.find(query);
+		return sendSuccess(res, products, 'Products fetched successfully', 200);
 	} catch (e) {
-		res.status(500).json({ error: e.message });
+		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
 	}
 });
 
 // create a get request to search products and get them
 // /api/products/search/i
-productRouter.get('/search/:name', auth, async (req, res) => {
+productRouter.get('/search/:name', async (req, res) => {
 	try {
 		const products = await Product.find({
 			name: { $regex: req.params.name, $options: 'i' },
 		});
 
-		res.json(products);
+		return sendSuccess(res, products, 'Products fetched successfully', 200);
 	} catch (e) {
-		res.status(500).json({ error: e.message });
+		return sendError(res, { error: `Error in searching products : ${e.message}` }, 500);
 	}
 });
 
-// create a post request route to rate the product
-productRouter.post('/rate-product', auth, async (req, res) => {
-	try {
-		const { id, rating } = req.body;
-		let product = await Product.findById(id);
-
-		for (let i = 0; i < product.ratings.length; i++) {
-			if (product.ratings[i].userId == req.user) {
-				product.ratings.splice(i, 1);
-				break;
-			}
-		}
-
-		const ratingSchema = {
-			userId: req.user,
-			rating,
-		};
-
-		product.ratings.push(ratingSchema);
-		product = await product.save();
-		res.json(product);
-	} catch (e) {
-		res.status(500).json({ error: e.message });
-	}
-});
 
 // get request for deal-of-the-day
-
-productRouter.get('/deal-of-day', auth, async (req, res) => {
+productRouter.get('/deal-of-day', async (req, res) => {
 	try {
 		let products = await Product.find({});
 
@@ -73,15 +51,14 @@ productRouter.get('/deal-of-day', auth, async (req, res) => {
 			return aSum < bSum ? 1 : -1;
 		});
 
-		res.json(products[0]);
+		return sendSuccess(res, products[0], 'Deal of the day fetched successfully', 200);
 	} catch (e) {
-		res.status(500).json({ error: e.message });
+		return sendError(res, { error: `Error in fetching deal of the day : ${e.message}` }, 500);
 	}
 });
 
-// get all Porducts available
-
-productRouter.get('/get-all-products-names', auth, async (req, res) => {
+// get all Products available
+productRouter.get('/get-all-products-names', async (req, res) => {
 	try {
 		const products = await Product.find({});
 		let productNames = [];
@@ -89,40 +66,37 @@ productRouter.get('/get-all-products-names', auth, async (req, res) => {
 		for (let i = 0; i < products.length; i++) {
 			productNames[i] = products[i].name;
 		}
-		res.json(productNames);
+		return sendSuccess(res, productNames, 'Products fetched successfully', 200);
 	} catch (e) {
-		res.status(500).json({ error: e.message });
+		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
 	}
 });
 
-productRouter.get('/get-user-of-product', auth, async (req, res) => {
+productRouter.get('/get-users-who-rated/:productId', authenticateToken, async (req, res) => {
 	try {
-		// const { id } = req.body;
-		let product = await Product.findById({ id: req.body });
-		// // let rating = product.ratings;
-		let usersList = [];
-		for (let i = 0; i < product.ratings.length; i++) {
-			let userExist = await User.findById(product.ratings[i].userId);
+		const { productId } = req.params;
 
-			usersList.push(userExist);
+		// Find the product and populate the ratings with user information
+		const product = await Product.findById(productId)
+			.populate({
+				path: 'ratings',
+				populate: {
+					path: 'userId',
+					model: 'User',
+					select: 'name email avatar'
+				}
+			});
+
+		if (!product) {
+			return sendError(res, 'Product not found', 404);
 		}
 
-		/*
-        
-        for (let i = 0; i < product.ratings.length; i++) {
-            if (product.ratings[i].userId == req.user) {
-                product.ratings.splice(i, 1);
-                break;
-            }
-        }
-        
-        */
+		// Extract users from ratings
+		const users = product.ratings.map(rating => rating.userId);
 
-		res.json(usersList);
+		return sendSuccess(res, users, 'Users who rated the product fetched successfully', 200);
 	} catch (e) {
-		res.status(500).json({
-			error: `Error in getting userID via ratings :  ${e.message}`,
-		});
+		return sendError(res, { error: `Error in fetching users who rated : ${e.message}` }, 500);
 	}
 });
 

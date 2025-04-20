@@ -1,33 +1,39 @@
 const express = require('express');
 const userRouter = express.Router();
 const User = require('../models/user');
-const auth = require('../middlewares/auth');
-const { Product } = require('../models/product');
+const Product = require('../models/product');
 const Order = require('../models/order');
 const cloudinary = require('../configs/cloudinary');
+const authenticateToken = require('../middlewares/auth');
+const { sendError, sendSuccess } = require('../utils/responseUtils');
 
 //Get user data
-userRouter.get('/me', auth, async (req, res) => {
-	const user = await User.findById(req.user);
-
-	res.json({ ...user._doc, token: req.token });
+userRouter.get('/me', authenticateToken, async (req, res) => {
+	try {
+		const user = await User.findById(req.user).select('-password');
+		if (!user) {
+			return sendError(res, 'User not found', 404);
+		}
+		return sendSuccess(res, user, 'User data fetched successfully', 200);
+	} catch (error) {
+		return sendError(res, { error: `Error in getting user data: ${error.message}` }, 500);
+	}
 });
 
 // add item to cart
-userRouter.post('/add-to-cart', auth, async (req, res) => {
+userRouter.post('/add-to-cart', authenticateToken, async (req, res) => {
 	try {
 		const { id } = req.body;
 		const product = await Product.findById(id);
-		//req.user is the user id provided by mongoDB
+
 		let user = await User.findById(req.user);
 
 		// if cart is empty push the product in "cart" array of user
 		// and update the quatity as 1
 		if (user.cart.length == 0) {
-			console.log('====> User cart length 0: increamenting to 1');
 			user.cart.push({ product, quantity: 1 });
 		} else {
-			console.log('====> User cart length non-zero: increamenting to 1');
+			;
 			let isProductFound = false;
 
 			for (let i = 0; i < user.cart.length; i++) {
@@ -43,7 +49,7 @@ userRouter.post('/add-to-cart', auth, async (req, res) => {
 				let productFound = user.cart.find(productItem =>
 					productItem.product._id.equals(product._id),
 				);
-				console.log('====> Product found in cart already, increamenting by 1');
+				// console.log('====> Product found in cart already, increamenting by 1');
 				// increament the quantity by 1
 				productFound.quantity += 1;
 			} else {
@@ -55,14 +61,14 @@ userRouter.post('/add-to-cart', auth, async (req, res) => {
 		}
 		//updating the user info
 		user = await user.save();
-		res.json(user);
+		return sendSuccess(res, user, 'Product added to cart successfully', 200);
 	} catch (e) {
-		res.status(500).json({ error: e.message });
+		return sendError(res, { error: `Error in adding product to cart : ${e.message}` }, 500);
 	}
 });
 
 // add item to wishList
-userRouter.post('/add-to-wishList', auth, async (req, res) => {
+userRouter.post('/add-to-wishList', authenticateToken, async (req, res) => {
 	try {
 		const { id } = req.body;
 		const product = await Product.findById(id);
@@ -70,14 +76,14 @@ userRouter.post('/add-to-wishList', auth, async (req, res) => {
 		let user = await User.findById(req.user);
 
 		// if cart is empty push the product in "cart" array of user
-		// and update the quatity as 1
+		// and update the quantity as 1
 		if (user.wishList.length == 0) {
-			// console.log("====> User wishList length 0: increamenting to 1");
+			// console.log("====> User wishList length 0: incrementing to 1");
 			// product is ID of the product, whereas { product } is the product object
-			// dont use this for sending product : user.wishList.push(product);
+			// don't use this for sending product : user.wishList.push(product);
 			user.wishList.push({ product });
 		} else {
-			// console.log("====> User wishList length non-zero: increamenting to 1");
+			// console.log("====> User wishList length non-zero: incrementing to 1");
 			let isProductFound = false;
 
 			for (let i = 0; i < user.wishList.length; i++) {
@@ -94,21 +100,16 @@ userRouter.post('/add-to-wishList', auth, async (req, res) => {
 		}
 		//updating the user info
 		user = await user.save();
-		res.json(user);
+		return sendSuccess(res, user, 'Product added to wishList successfully', 200);
 	} catch (e) {
-		res.status(500).json({
-			error: `Error in adding to wishList ${e.message}`,
-		});
+		return sendError(res, { error: `Error in adding product to wishList : ${e.message}` }, 500);
 	}
 });
 
 // remove item from wish list
-userRouter.delete('/remove-from-wishList/:id', auth, async (req, res) => {
+userRouter.delete('/remove-from-wishList/:id', authenticateToken, async (req, res) => {
 	try {
 		const { id } = req.params;
-		//same thing
-		// const { id } = req.params.id ;
-		// console.log(`ID is : ${id}`);
 
 		const product = await Product.findById(id);
 		//req.user is the user id provided by mongoDB
@@ -124,89 +125,59 @@ userRouter.delete('/remove-from-wishList/:id', auth, async (req, res) => {
 		}
 		//updating the user info
 		user = await user.save();
-		res.json(user);
+		return sendSuccess(res, user, 'Product removed from wishList successfully', 200);
 	} catch (e) {
-		res.status(500).json({
-			error: `Error in removing from wishList ${e.message}`,
-		});
+		return sendError(res, { error: `Error in removing product from wishList : ${e.message}` }, 500);
 	}
 });
 
 // add profile picture
-userRouter.post('/add-profile-picture', auth, async (req, res) => {
+userRouter.post('/add-profile-picture', authenticateToken, async (req, res) => {
 	try {
-		const { image, folder } = req.body;
-		let user = await User.findById(req.user);
-		console.log(`User before update: ${user.name}, imageUrl: ${user.imageUrl}`);
-
-		// If there's an old image URL, delete it from Cloudinary
-		if (user.imageUrl && user.imageUrl !== '') {
-			try {
-				// Extract the public ID from the Cloudinary URL
-				const uri = new URL(user.imageUrl);
-				const pathSegment = uri.pathname.split('/');
-
-				// Find the index of the last segment before the file extension
-				const lastSegmentIndex = pathSegment.length - 1;
-				const lastSegment = pathSegment[lastSegmentIndex];
-
-				// Remove the file extension to get the public ID
-				const publicId = lastSegment.substring(0, lastSegment.lastIndexOf('.'));
-
-				// Get the folder path (everything after 'eshop/')
-				const eshopIndex = pathSegment.findIndex(part => part === 'eshop');
-				if (eshopIndex !== -1) {
-					const folderPath = pathSegment
-						.slice(eshopIndex + 1, lastSegmentIndex)
-						.join('/');
-					const fullPublicId = `${folderPath}/${publicId}`;
-
-					console.log(
-						`Attempting to delete old profile picture with public ID: ${fullPublicId}`,
-					);
-					await cloudinary.uploader.destroy(fullPublicId);
-					console.log(
-						`Successfully deleted old profile picture: ${fullPublicId}`,
-					);
-				}
-			} catch (deleteError) {
-				console.error('Error deleting old profile picture:', deleteError);
-				// Continue with the update even if deletion fails
-			}
+		const user = await User.findById(req.user);
+		if (!user) {
+			return sendError(res, 'User not found', 404);
 		}
 
-		const uploadFolder =
-			folder || `eshop/User_Profile_Pictures/${user.email}/${user.name}`;
-		const result = await cloudinary.uploader.upload(image, {
-			folder: uploadFolder,
-			resource_type: 'auto',
+		// Check if image file exists in request
+		if (!req.files || !req.files.image) {
+			return sendError(res, 'No image file provided', 400);
+		}
+
+		const file = req.files.image;
+
+		// Delete old image from cloudinary if exists
+		if (user.avatar && user.avatar[0] && user.avatar[0].public_id) {
+			await cloudinary.uploader.destroy(user.avatar[0].public_id);
+		}
+
+		// Upload new image to cloudinary
+		const result = await cloudinary.uploader.upload(file.tempFilePath, {
+			folder: 'eshop/userAvatar',
+			width: 150,
+			crop: "scale"
 		});
 
-		// Update the imageUrl field with the new Cloudinary URL
-		user.imageUrl = result.secure_url;
+		// Update user avatar
+		user.avatar = [{
+			public_id: result.public_id,
+			url: result.secure_url
+		}];
 
-		// Save the user with the new imageUrl
-		user = await user.save();
-		console.log(`User after update: ${user.name}, imageUrl: ${user.imageUrl}`);
+		await user.save();
 
-		// Return the updated user object
-		res.json(user);
+		return sendSuccess(res, user, 'Profile picture updated successfully', 200);
+
 	} catch (e) {
-		console.error('Error updating profile picture:', e);
-		res.status(500).json({ error: e.message });
+		return sendError(res, { error: `Error in adding profile picture : ${e.message}` }, 500);
 	}
 });
 
-// do not forget to add the colon :  before id in the url
-userRouter.delete('/remove-from-cart/:id', auth, async (req, res) => {
+userRouter.delete('/remove-from-cart/:id', authenticateToken, async (req, res) => {
 	try {
-		console.log('inside remove cart function');
 		const { id } = req.params;
-		//same thing
-		// const { id } = req.params.id ;
-		console.log(`ID is : ${id}`);
-
 		const product = await Product.findById(id);
+
 		//req.user is the user id provided by mongoDB
 		let user = await User.findById(req.user);
 
@@ -214,7 +185,7 @@ userRouter.delete('/remove-from-cart/:id', auth, async (req, res) => {
 			// if the product's id matches the id of product in cart
 			if (user.cart[i].product._id.equals(product._id)) {
 				// Array.splice(start: number, deleteCount? )
-				// splice(starIndex, howManytoDelete)
+				// splice(starIndex, how Many to Delete)
 				if (user.cart[i].quantity == 1) {
 					user.cart.splice(i, 1);
 				} else {
@@ -224,18 +195,15 @@ userRouter.delete('/remove-from-cart/:id', auth, async (req, res) => {
 		}
 		//updating the user info
 		user = await user.save();
-		res.json(user);
+		return sendSuccess(res, user, 'Product removed from cart successfully', 200);
 	} catch (e) {
-		console.log('inside the catch block of remove from cart');
-		res.status(500).json({
-			error: `Error in removing product from cart : ${e.message}`,
-		});
+		return sendError(res, { error: `Error in removing product from cart : ${e.message}` }, 500);
 	}
 });
 
 // remove search history item
 
-userRouter.post('/delete-search-history-item', auth, async (req, res) => {
+userRouter.post('/delete-search-history-item', authenticateToken, async (req, res) => {
 	try {
 		const { deleteQuery } = req.body;
 		let user = await User.findById(req.user);
@@ -246,31 +214,29 @@ userRouter.post('/delete-search-history-item', auth, async (req, res) => {
 
 		//updating the user info
 		user = await user.save();
-		res.json(user);
+		return sendSuccess(res, user, 'Search history item deleted successfully', 200);
 	} catch (e) {
-		res.status(500).json({
-			error: `Error in deleting searchQuery item : ${e.message}`,
-		});
+		return sendError(res, { error: `Error in deleting search history item : ${e.message}` }, 500);
 	}
 });
 
 // save user address
 
-userRouter.post('/save-user-address', auth, async (req, res) => {
+userRouter.post('/save-user-address', authenticateToken, async (req, res) => {
 	try {
 		const { address } = req.body;
 		let user = await User.findById(req.user);
 		user.address = address;
 		user = await user.save();
-		res.json(user);
+		return sendSuccess(res, user, 'Address saved successfully', 200);
 	} catch (e) {
-		res.status(500).json({ error: e.message });
+		return sendError(res, { error: `Error in saving address : ${e.message}` }, 500);
 	}
 });
 
 // order product
 
-userRouter.post('/place-order', auth, async (req, res) => {
+userRouter.post('/place-order', authenticateToken, async (req, res) => {
 	try {
 		// const { id } = req.body;
 		const { cart, totalPrice, address } = req.body;
@@ -284,7 +250,7 @@ userRouter.post('/place-order', auth, async (req, res) => {
 				await product.save();
 			} else {
 				// 400 Bad Request as product is out of stock
-				return res.status(400).json({ msg: `${product.name} is out of stock` });
+				return sendError(res, { error: `Product ${product.name} is out of stock` }, 400);
 			}
 		}
 
@@ -303,28 +269,27 @@ userRouter.post('/place-order', auth, async (req, res) => {
 
 		// save the order in DB
 		order = await order.save();
-		res.json(order);
+		return sendSuccess(res, order, 'Order placed successfully', 200);
 	} catch (e) {
-		res.status(500).json({ error: e.message });
+		return sendError(res, { error: `Error in placing order : ${e.message}` }, 500);
 	}
 });
 
 // getting all orders
 
-userRouter.get('/orders/me', auth, async (req, res) => {
+userRouter.get('/orders/me', authenticateToken, async (req, res) => {
 	try {
 		// const { id } = req.body;
 		let orders = await Order.find({ userId: req.user });
-		res.json(orders);
-		// console.log(`\nOrder List is ==> ${orders}`);
+		return sendSuccess(res, orders, 'Orders fetched successfully', 200);
 	} catch (e) {
-		res.status(500).json({ error: e.message });
+		return sendError(res, { error: `Error in fetching orders : ${e.message}` }, 500);
 	}
 });
 
 // search history
 
-userRouter.post('/add-to-search-history', auth, async (req, res) => {
+userRouter.post('/add-to-search-history', authenticateToken, async (req, res) => {
 	try {
 		const { searchQuery } = req.body;
 
@@ -334,15 +299,13 @@ userRouter.post('/add-to-search-history', auth, async (req, res) => {
 		// user.searchHistory[] = searchQuery;
 
 		user = await user.save();
-		res.json(user);
+		return sendSuccess(res, user, 'Search query added successfully', 200);
 	} catch (e) {
-		res.status(500).json({
-			error: `Error in adding search query in DB : ${e.message}`,
-		});
+		return sendError(res, { error: `Error in adding search query : ${e.message}` }, 500);
 	}
 });
 
-userRouter.get('/get-search-history', auth, async (req, res) => {
+userRouter.get('/get-search-history', authenticateToken, async (req, res) => {
 	try {
 		let user = await User.findById(req.user);
 		let searchHistory = [];
@@ -351,25 +314,43 @@ userRouter.get('/get-search-history', auth, async (req, res) => {
 			searchHistory[i] = user.searchHistory[i];
 		}
 
-		res.json(searchHistory);
+		return sendSuccess(res, searchHistory, 'Search history fetched successfully', 200);
 	} catch (e) {
-		res.status(500).json({
-			error: `Error in fetching search history : ${e.message}`,
-		});
+		return sendError(res, { error: `Error in fetching search history : ${e.message}` }, 500);
 	}
 });
 
 // getting wishList
-userRouter.get('/get-wishList', auth, async (req, res) => {
+userRouter.get('/get-wishList', authenticateToken, async (req, res) => {
 	try {
 		let user = User.findById(req.user);
 		let wishList = [];
 		wishList = user.wishList;
-		res.json(wishList);
+		return sendSuccess(res, wishList, 'WishList fetched successfully', 200);
 	} catch (e) {
-		res.status(500).json({
-			error: `Error in fetching wishList : ${e.message}`,
-		});
+		return sendError(res, { error: `Error in fetching wishList : ${e.message}` }, 500);
+	}
+});
+
+userRouter.put('/shipment-address', authenticateToken, async (req, res) => {
+	try {
+		const { name, phone, address } = req.body;
+		let user = await User.findById(req.user);
+
+		if (name) {
+			user.name = name;
+		}
+		if (phone) {
+			user.phone = phone;
+		}
+		if (address) {
+			user.address = address;
+		}
+
+		user = await user.save();
+		return sendSuccess(res, user, 'Profile updated successfully', 200);
+	} catch (e) {
+		return sendError(res, { error: `Error updating profile: ${e.message}` }, 500);
 	}
 });
 

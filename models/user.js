@@ -1,6 +1,4 @@
 const mongoose = require("mongoose");
-const { productSchema } = require("./product");
-
 const userSchema = mongoose.Schema({
 	name: {
 		required: true,
@@ -16,31 +14,39 @@ const userSchema = mongoose.Schema({
 		required: true,
 		type: String,
 	},
-
-	address: {
+	role: {
+		type: String,
+		default: 'user',
+		enum: ['user', 'admin'],
+	},
+	phone: {
 		type: String,
 		default: '',
 	},
-	type: {
+	address: {
 		type: String,
-		default: 'user',
+		default: '',
 	},
 	avatar: [
 		{
 			public_id: {
 				type: String,
 				required: true,
+				default: "default_avatar",
 			},
 			url: {
 				type: String,
 				required: true,
+				default: "https://img.freepik.com/premium-vector/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-vector-illustration_561158-3467.jpg",
 			},
 		},
 	],
-	// cart
 	cart: [
 		{
-			product: productSchema,
+			product: {
+				type: mongoose.Schema.Types.ObjectId,
+				ref: "Product"
+			},
 			quantity: {
 				type: Number,
 				required: true,
@@ -48,11 +54,25 @@ const userSchema = mongoose.Schema({
 		},
 	],
 
-    searchHistory: [
-        {
-            type: String,
-        },
-    ],
+	orders: [
+		{
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Order",
+		},
+	],
+
+	wishlist: [
+		{
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Product",
+		},
+	],
+
+	searchHistory: [
+		{
+			type: String,
+		},
+	],
 });
 
 const User = mongoose.model("User", userSchema);

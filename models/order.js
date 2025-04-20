@@ -1,40 +1,69 @@
 const mongoose = require("mongoose");
-const { productSchema } = require("./product");
 
 const orderSchema = mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+    },
     products: [
         {
-            product: productSchema,
+            product: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Product",
+                required: true,
+            },
             quantity: {
+                type: Number,
+                required: true,
+                min: [1, 'Quantity must be at least 1'],
+                validate: {
+                    validator: Number.isInteger,
+                    message: '{VALUE} is not an integer value'
+                }
+            },
+            price: {
                 type: Number,
                 required: true,
             },
         },
     ],
 
-    totalPrice: {
+    totalAmount: {
         type: Number,
         required: true,
     },
 
-    address: {
+    shippingAddress: {
         type: String,
         required: true,
-    },
-
-    userId: {
-        type: String,
-        required: true,
-    },
-
-    orderedAt: {
-        type: Number,
-        required: true,
+        default: ''
     },
 
     status: {
-        type: Number,
-        default: 0,
+        type: String,
+        enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+        default: 'pending',
+    },
+
+    paymentMethod: {
+        type: String,
+        required: true,
+    },
+
+    paymentStatus: {
+        type: String,
+        enum: ['pending', 'completed', 'failed'],
+        default: 'pending',
+    },
+
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now,
     },
 });
 

@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const ratingSchema = require('./rating');
 
 const productSchema = mongoose.Schema({
 	name: {
@@ -33,7 +32,7 @@ const productSchema = mongoose.Schema({
 		},
 	],
 
-	quantity: {
+	stock: {
 		type: Number,
 		required: true,
 	},
@@ -44,12 +43,18 @@ const productSchema = mongoose.Schema({
 	},
 
 	category: {
-		type: String,
+		type: mongoose.Schema.Types.ObjectId,
+		ref: 'Category',
 		required: true,
 	},
 
-	ratings: [ratingSchema],
+	ratings: [
+		{
+			type: mongoose.Schema.Types.ObjectId,
+			ref: 'Rating',
+		}
+	],
 });
 const Product = mongoose.model('Product', productSchema);
 
-module.exports = { Product, productSchema };
+module.exports = Product;
