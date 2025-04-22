@@ -7,7 +7,7 @@ const cloudinary = require('../configs/cloudinary');
 const { sendSuccess, sendError } = require('../utils/responseUtils');
 
 // Create a new product
-adminRouter.post('/add-product', admin, async (req, res) => {
+adminRouter.post('/product/add', admin, async (req, res) => {
 	try {
 
 		if (!req.files || req.files.length === 0) {
@@ -42,7 +42,7 @@ adminRouter.post('/add-product', admin, async (req, res) => {
 				name,
 				description,
 				brandName,
-				quantity,
+				stock,
 				price,
 				category,
 			} = req.body;
@@ -52,7 +52,7 @@ adminRouter.post('/add-product', admin, async (req, res) => {
 				description,
 				brandName,
 				images,
-				quantity,
+				stock,
 				price,
 				category,
 			});
@@ -83,14 +83,14 @@ adminRouter.post('/add-product', admin, async (req, res) => {
 });
 
 // update product
-adminRouter.put('/update-product', admin, async (req, res) => {
+adminRouter.put('/product/update', admin, async (req, res) => {
 	try {
 		const {
 			id,
 			name,
 			description,
 			brandName,
-			images,
+			newImages,
 			quantity,
 			price,
 			category,
@@ -105,12 +105,13 @@ adminRouter.put('/update-product', admin, async (req, res) => {
 
 		// Delete old images from Cloudinary if any
 		if (imagesToDelete && imagesToDelete.length > 0) {
-			for (const imageUrl of imagesToDelete) {
+			for (const image of imagesToDelete) {
 				try {
-
-					const publicId = await cloudinary.uploader.destroy(
-						publicIdWithoutExtension,
-					);
+					const { public_id } = image;
+					await cloudinary.uploader.destroy(public_id);
+					product.images = product.images.filter(
+						image => image.public_id !== public_id,
+					)
 				} catch (error) {
 					return sendError(
 						res,
@@ -131,8 +132,39 @@ adminRouter.put('/update-product', admin, async (req, res) => {
 		if (brandName) {
 			product.brandName = brandName;
 		}
-		if (images) {
-			product.images = images;
+		if (newImages && newImages.length > 0) {
+			// Upload new images to Cloudinary
+			try {
+				const uploadPromises = newImages.map(async file => {
+					const b64 = Buffer.from(file.buffer).toString('base64');
+					const dataURI = 'data:' + file.mimetype + ';base64,' + b64;
+
+					return cloudinary.uploader.upload(dataURI, {
+						folder: 'motbook/products',
+						resource_type: 'auto',
+						transformation: [
+							{ width: 800, crop: 'scale' },
+							{ quality: 'auto' },
+						],
+					});
+				});
+
+				const results = await Promise.all(uploadPromises);
+
+				// Transform Cloudinary results to image data
+				const images = results.map(result => ({
+					url: result.secure_url,
+					public_id: result.public_id,
+				}));
+
+				product.images = [...product.images, ...images];
+			} catch (error) {
+				return sendError(
+					res,
+					{ error: `Error in uploading images : ${error.message}` },
+					500,
+				);
+			}
 		}
 		if (quantity) {
 			product.quantity = quantity;
@@ -164,10 +196,9 @@ adminRouter.put('/update-product', admin, async (req, res) => {
 // get all products
 // api /admin/get-products
 
-adminRouter.get('/get-products', admin, async (req, res) => {
+adminRouter.get('/products', admin, async (req, res) => {
 	try {
 		const products = await Product.find({});
-		// return products to client
 
 		return sendSuccess(
 			res,
@@ -185,9 +216,9 @@ adminRouter.get('/get-products', admin, async (req, res) => {
 });
 
 // delete product
-adminRouter.post('/delete-product', admin, async (req, res) => {
+adminRouter.post('/product/delete/:id', admin, async (req, res) => {
 	try {
-		const { id } = req.body;
+		const { id } = req.params;
 
 		// Get the product first to ensure it exists
 		const product = await Product.findById(id);
@@ -206,7 +237,11 @@ adminRouter.post('/delete-product', admin, async (req, res) => {
 				await cloudinary.api.delete_folder(public_id);
 			} catch (error) {
 				console.error(`Error deleting image ${image}:`, error);
-				// Continue with other images even if one fails
+				return sendError(
+					res,
+					{ error: `Error in deleting image : ${error.message}` },
+					500,
+				);
 			}
 		}
 
@@ -229,7 +264,7 @@ adminRouter.post('/delete-product', admin, async (req, res) => {
 });
 
 // change status
-adminRouter.post('/change-order-status', admin, async (req, res) => {
+adminRouter.post('/orders/change-status', admin, async (req, res) => {
 	try {
 		const { orderId, status } = req.body;
 
@@ -252,7 +287,7 @@ adminRouter.post('/change-order-status', admin, async (req, res) => {
 });
 
 //
-adminRouter.get('/get-orders', admin, async (req, res) => {
+adminRouter.get('/orders', admin, async (req, res) => {
 	try {
 		const orders = await Order.find({});
 		return sendSuccess(
@@ -274,62 +309,107 @@ adminRouter.get('/get-orders', admin, async (req, res) => {
 
 adminRouter.get('/analytics', admin, async (req, res) => {
 	try {
-		const orders = await Order.find({});
+		const orders = await Order.find({})
+			.populate({
+				path: 'products.product',
+				populate: {
+					path: 'category',
+					populate: {
+						path: 'parent',
+						model: 'Category'
+					}
+				}
+			});
+
 		let totalEarnings = 0;
+		let categoryEarnings = {};
+		let parentCategoryEarnings = {};
+		let categoryTreeEarnings = {};
+		let monthlyEarnings = {};
+		let orderStatusStats = {};
+		let productSales = {};
 
-		for (let i = 0; i < orders.length; i++) {
-			for (let j = 0; j < orders[i].products.length; j++) {
-				totalEarnings +=
-					orders[i].products[j].quantity * orders[i].products[j].product.price;
-			}
-		}
+		orders.forEach(order => {
+			const orderMonth = new Date(order.createdAt).toLocaleString('en-US', {
+				month: 'long',
+				year: 'numeric'
+			});
 
-		// Category wise order fetching
-		let mobileEarnings = await fetchCategoryWiseProducts('Mobiles');
-		let essentialsEarnings = await fetchCategoryWiseProducts('Essentials');
-		let appliancesEarnings = await fetchCategoryWiseProducts('Appliances');
-		let booksEarnings = await fetchCategoryWiseProducts('Books');
-		let fashionEarnings = await fetchCategoryWiseProducts('Fashion');
+			// Thống kê đơn hàng theo trạng thái
+			orderStatusStats[order.status] = (orderStatusStats[order.status] || 0) + 1;
 
-		let earnings = {
-			totalEarnings,
-			mobileEarnings,
-			essentialsEarnings,
-			appliancesEarnings,
-			booksEarnings,
-			fashionEarnings,
-		};
+			order.products.forEach(item => {
+				const product = item.product;
+				const category = product.category;
+				const parent = category?.parent;
+				const quantity = item.quantity;
+				const earnings = quantity * product.price;
+
+				totalEarnings += earnings;
+
+				// === Doanh thu theo danh mục nhỏ ===
+				const categoryName = category?.name || 'Unknown';
+				categoryEarnings[categoryName] = (categoryEarnings[categoryName] || 0) + earnings;
+
+				// === Doanh thu theo danh mục lớn (parent) ===
+				const parentCategoryName = parent?.name || categoryName;
+				parentCategoryEarnings[parentCategoryName] = (parentCategoryEarnings[parentCategoryName] || 0) + earnings;
+
+				// === Dạng cây phân cấp ===
+				if (!categoryTreeEarnings[parentCategoryName]) {
+					categoryTreeEarnings[parentCategoryName] = {
+						totalEarnings: 0,
+						subcategories: {}
+					};
+				}
+
+				categoryTreeEarnings[parentCategoryName].totalEarnings += earnings;
+
+				if (parentCategoryName !== categoryName) {
+					categoryTreeEarnings[parentCategoryName].subcategories[categoryName] =
+						(categoryTreeEarnings[parentCategoryName].subcategories[categoryName] || 0) + earnings;
+				}
+
+				// === Doanh thu theo tháng ===
+				monthlyEarnings[orderMonth] = (monthlyEarnings[orderMonth] || 0) + earnings;
+
+				// === Top sản phẩm bán chạy ===
+				const key = product._id.toString();
+				productSales[key] = productSales[key] || {
+					productId: product._id,
+					name: product.name,
+					totalSold: 0
+				};
+				productSales[key].totalSold += quantity;
+			});
+		});
+
+		const topSellingProducts = Object.values(productSales)
+			.sort((a, b) => b.totalSold - a.totalSold)
+			.slice(0, 5);
 
 		return sendSuccess(
 			res,
-			earnings,
+			{
+				totalEarnings,
+				categoryEarnings,
+				parentCategoryEarnings,
+				categoryTreeEarnings,
+				monthlyEarnings,
+				orderStatusStats,
+				topSellingProducts
+			},
 			'Analytics fetched successfully',
-			200,
+			200
 		);
 	} catch (e) {
 		return sendError(
 			res,
-			{ error: `Error in fetching analytics : ${e.message}` },
-			500,
+			{ error: `Error in fetching analytics: ${e.message}` },
+			500
 		);
 	}
 });
 
-async function fetchCategoryWiseProducts(category) {
-	let earnings = 0;
-	let categoryOrders = await Order.find({
-		'products.product.category': category,
-	});
 
-	for (let i = 0; i < categoryOrders.length; i++) {
-		for (let j = 0; j < categoryOrders[i].products.length; j++) {
-			earnings +=
-				categoryOrders[i].products[j].quantity *
-				categoryOrders[i].products[j].product.price;
-		}
-	}
-	return earnings;
-}
-
-// do not forget to export adminRouter!
 module.exports = adminRouter;

@@ -4,7 +4,7 @@ const Product = require('../models/product');
 const authenticateToken = require('../middlewares/auth');
 const { sendSuccess, sendError } = require('../utils/responseUtils');
 
-productRouter.get('/', async (req, res) => {
+productRouter.get('/category/:category', async (req, res) => {
 	try {
 		let query = {};
 		if (req.query?.category) {
@@ -14,6 +14,40 @@ productRouter.get('/', async (req, res) => {
 		return sendSuccess(res, products, 'Products fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
+	}
+});
+
+
+productRouter.get('/', async (req, res) => {
+	try {
+		const products = await Product.find({});
+		return sendSuccess(res, products, 'Products fetched successfully', 200);
+	} catch (e) {
+		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
+	}
+});
+
+productRouter.get('/:productId', async (req, res) => {
+	try {
+		const { productId } = req.params;
+		const product = await Product.findById(productId);
+		if (!product) {
+			return sendError(res, 'Product not found', 404);
+		}
+		return sendSuccess(res, product, 'Product fetched successfully', 200);
+	} catch (e) {
+		return sendError(res, { error: `Error in fetching product : ${e.message}` }, 500);
+	}
+}
+);
+
+productRouter.get('/get-similar-products/:category', async (req, res) => {
+	try {
+		const { category } = req.params;
+		const products = await Product.find({ category });
+		return sendSuccess(res, products, 'Similar products fetched successfully', 200);
+	} catch (e) {
+		return sendError(res, { error: `Error in fetching similar products : ${e.message}` }, 500);
 	}
 });
 
@@ -33,7 +67,7 @@ productRouter.get('/search/:name', async (req, res) => {
 
 
 // get request for deal-of-the-day
-productRouter.get('/deal-of-day', async (req, res) => {
+productRouter.get('/deals-of-the-day', async (req, res) => {
 	try {
 		let products = await Product.find({});
 
@@ -58,7 +92,7 @@ productRouter.get('/deal-of-day', async (req, res) => {
 });
 
 // get all Products available
-productRouter.get('/get-all-products-names', async (req, res) => {
+productRouter.get('/names', async (req, res) => {
 	try {
 		const products = await Product.find({});
 		let productNames = [];
@@ -72,7 +106,7 @@ productRouter.get('/get-all-products-names', async (req, res) => {
 	}
 });
 
-productRouter.get('/get-users-who-rated/:productId', authenticateToken, async (req, res) => {
+productRouter.get('/user-ratings/:productId', authenticateToken, async (req, res) => {
 	try {
 		const { productId } = req.params;
 

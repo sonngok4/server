@@ -20,10 +20,34 @@ userRouter.get('/me', authenticateToken, async (req, res) => {
 	}
 });
 
-// add item to cart
-userRouter.post('/add-to-cart', authenticateToken, async (req, res) => {
+userRouter.get('/profile', authenticateToken, async (req, res) => {
 	try {
-		const { id } = req.body;
+		const user = await User.findById(req.user);
+		if (!user) {
+			return sendError(res, 'User not found', 404);
+		}
+		return sendSuccess(res, user, 'User data fetched successfully', 200);
+	} catch (error) {
+		return sendError(res, { error: `Error in getting user data: ${error.message}` }, 500);
+	}
+});
+
+userRouter.put('/cart/update', authenticateToken, async (req, res) => {
+	try {
+		const { cart } = req.body;
+		const user = await User.findById(req.user);
+		user.cart = cart;
+		await user.save();
+		return sendSuccess(res, user, 'Cart updated successfully', 200);
+	} catch (error) {
+		return sendError(res, { error: `Error in updating cart: ${error.message}` }, 500);
+	}
+});
+
+// add item to cart
+userRouter.post('/cart/add/:id', authenticateToken, async (req, res) => {
+	try {
+		const { id } = req.params;
 		const product = await Product.findById(id);
 
 		let user = await User.findById(req.user);
@@ -67,10 +91,50 @@ userRouter.post('/add-to-cart', authenticateToken, async (req, res) => {
 	}
 });
 
-// add item to wishList
-userRouter.post('/add-to-wishList', authenticateToken, async (req, res) => {
+userRouter.delete('/cart/remove/:id', authenticateToken, async (req, res) => {
 	try {
-		const { id } = req.body;
+		const { id } = req.params;
+		const product = await Product.findById(id);
+
+		//req.user is the user id provided by mongoDB
+		let user = await User.findById(req.user);
+
+		for (let i = 0; i < user.cart.length; i++) {
+			// if the product's id matches the id of product in cart
+			if (user.cart[i].product._id.equals(product._id)) {
+				// Array.splice(start: number, deleteCount? )
+				// splice(starIndex, how Many to Delete)
+				if (user.cart[i].quantity == 1) {
+					user.cart.splice(i, 1);
+				} else {
+					user.cart[i].quantity -= 1;
+				}
+			}
+		}
+		//updating the user info
+		user = await user.save();
+		return sendSuccess(res, user, 'Product removed from cart successfully', 200);
+	} catch (e) {
+		return sendError(res, { error: `Error in removing product from cart : ${e.message}` }, 500);
+	}
+});
+
+// getting wishList
+userRouter.get('/wishlist', authenticateToken, async (req, res) => {
+	try {
+		let user = User.findById(req.user);
+		let wishList = [];
+		wishList = user.wishList;
+		return sendSuccess(res, wishList, 'WishList fetched successfully', 200);
+	} catch (e) {
+		return sendError(res, { error: `Error in fetching wishList : ${e.message}` }, 500);
+	}
+});
+
+// add item to wishList
+userRouter.post('/wishlist/add/:id', authenticateToken, async (req, res) => {
+	try {
+		const { id } = req.params;
 		const product = await Product.findById(id);
 		//req.user is the user id provided by mongoDB
 		let user = await User.findById(req.user);
@@ -107,7 +171,7 @@ userRouter.post('/add-to-wishList', authenticateToken, async (req, res) => {
 });
 
 // remove item from wish list
-userRouter.delete('/remove-from-wishList/:id', authenticateToken, async (req, res) => {
+userRouter.delete('/wishlist/remove/:id', authenticateToken, async (req, res) => {
 	try {
 		const { id } = req.params;
 
@@ -132,7 +196,7 @@ userRouter.delete('/remove-from-wishList/:id', authenticateToken, async (req, re
 });
 
 // add profile picture
-userRouter.post('/add-profile-picture', authenticateToken, async (req, res) => {
+userRouter.post('/profile/picture', authenticateToken, async (req, res) => {
 	try {
 		const user = await User.findById(req.user);
 		if (!user) {
@@ -173,56 +237,12 @@ userRouter.post('/add-profile-picture', authenticateToken, async (req, res) => {
 	}
 });
 
-userRouter.delete('/remove-from-cart/:id', authenticateToken, async (req, res) => {
-	try {
-		const { id } = req.params;
-		const product = await Product.findById(id);
 
-		//req.user is the user id provided by mongoDB
-		let user = await User.findById(req.user);
 
-		for (let i = 0; i < user.cart.length; i++) {
-			// if the product's id matches the id of product in cart
-			if (user.cart[i].product._id.equals(product._id)) {
-				// Array.splice(start: number, deleteCount? )
-				// splice(starIndex, how Many to Delete)
-				if (user.cart[i].quantity == 1) {
-					user.cart.splice(i, 1);
-				} else {
-					user.cart[i].quantity -= 1;
-				}
-			}
-		}
-		//updating the user info
-		user = await user.save();
-		return sendSuccess(res, user, 'Product removed from cart successfully', 200);
-	} catch (e) {
-		return sendError(res, { error: `Error in removing product from cart : ${e.message}` }, 500);
-	}
-});
-
-// remove search history item
-
-userRouter.post('/delete-search-history-item', authenticateToken, async (req, res) => {
-	try {
-		const { deleteQuery } = req.body;
-		let user = await User.findById(req.user);
-
-		const index = user.searchHistory.indexOf(deleteQuery);
-
-		user.searchHistory.splice(index, 1);
-
-		//updating the user info
-		user = await user.save();
-		return sendSuccess(res, user, 'Search history item deleted successfully', 200);
-	} catch (e) {
-		return sendError(res, { error: `Error in deleting search history item : ${e.message}` }, 500);
-	}
-});
 
 // save user address
 
-userRouter.post('/save-user-address', authenticateToken, async (req, res) => {
+userRouter.post('/address/save', authenticateToken, async (req, res) => {
 	try {
 		const { address } = req.body;
 		let user = await User.findById(req.user);
@@ -239,35 +259,33 @@ userRouter.post('/save-user-address', authenticateToken, async (req, res) => {
 userRouter.post('/place-order', authenticateToken, async (req, res) => {
 	try {
 		// const { id } = req.body;
-		const { cart, totalPrice, address } = req.body;
-		let products = [];
+		const { orderRequest, totalAmount } = req.body;
+		const { orderItems, shippingAddress, paymentMethod, note } = orderRequest;
+		// orderItems = [{ product, quantity }]
+		const products = [];
+		for (let i = 0; i < orderItems.length; i++) {
+			const product = await Product.findById(orderItems[i].product._id);
+			console.log('====> Product:', product);
 
-		for (let i = 0; i < cart.length; i++) {
-			let product = await Product.findById(cart[i].product._id);
-			if (product.quantity >= cart[i].quantity) {
-				product.quantity -= cart[i].quantity;
-				products.push({ product, quantity: cart[i].quantity });
-				await product.save();
-			} else {
-				// 400 Bad Request as product is out of stock
-				return sendError(res, { error: `Product ${product.name} is out of stock` }, 400);
+			if (!product) {
+				return sendError(res, 'Product not found', 404);
 			}
+			products.push({
+				product: product,
+				quantity: orderItems[i].quantity,
+				totalPrice: product.price * orderItems[i].quantity,
+			});
 		}
-
 		let user = await User.findById(req.user);
-		// empty the cart after the order is placed
-		user.cart = [];
-		user = await user.save();
-
 		let order = new Order({
+			user,
 			products,
-			totalPrice,
-			address,
-			userId: req.user,
-			orderedAt: new Date().getTime(),
+			totalAmount,
+			shippingAddress,
+			paymentMethod,
+			note,
+			status: 'Pending',
 		});
-
-		// save the order in DB
 		order = await order.save();
 		return sendSuccess(res, order, 'Order placed successfully', 200);
 	} catch (e) {
@@ -289,7 +307,7 @@ userRouter.get('/orders/me', authenticateToken, async (req, res) => {
 
 // search history
 
-userRouter.post('/add-to-search-history', authenticateToken, async (req, res) => {
+userRouter.post('/search-history/add', authenticateToken, async (req, res) => {
 	try {
 		const { searchQuery } = req.body;
 
@@ -305,7 +323,7 @@ userRouter.post('/add-to-search-history', authenticateToken, async (req, res) =>
 	}
 });
 
-userRouter.get('/get-search-history', authenticateToken, async (req, res) => {
+userRouter.get('/search-history', authenticateToken, async (req, res) => {
 	try {
 		let user = await User.findById(req.user);
 		let searchHistory = [];
@@ -320,19 +338,43 @@ userRouter.get('/get-search-history', authenticateToken, async (req, res) => {
 	}
 });
 
-// getting wishList
-userRouter.get('/get-wishList', authenticateToken, async (req, res) => {
+
+// remove search history item
+
+userRouter.delete('/search-history/delete', authenticateToken, async (req, res) => {
 	try {
-		let user = User.findById(req.user);
-		let wishList = [];
-		wishList = user.wishList;
-		return sendSuccess(res, wishList, 'WishList fetched successfully', 200);
+		const { deleteQuery } = req.body;
+		let user = await User.findById(req.user);
+
+		const index = user.searchHistory.indexOf(deleteQuery);
+
+		user.searchHistory.splice(index, 1);
+
+		//updating the user info
+		user = await user.save();
+		return sendSuccess(res, user, 'Search history item deleted successfully', 200);
 	} catch (e) {
-		return sendError(res, { error: `Error in fetching wishList : ${e.message}` }, 500);
+		return sendError(res, { error: `Error in deleting search history item : ${e.message}` }, 500);
 	}
 });
 
-userRouter.put('/shipment-address', authenticateToken, async (req, res) => {
+// Clear all search history
+
+userRouter.delete('/search-history/clear', authenticateToken, async (req, res) => {
+	try {
+		let user = await User.findById(req.user);
+		user.searchHistory = [];
+
+		//updating the user info
+		user = await user.save();
+		return sendSuccess(res, user, 'Search history cleared successfully', 200);
+	} catch (e) {
+		return sendError(res, { error: `Error in clearing search history : ${e.message}` }, 500);
+	}
+});
+
+
+userRouter.put('/shipping-address', authenticateToken, async (req, res) => {
 	try {
 		const { name, phone, address } = req.body;
 		let user = await User.findById(req.user);

@@ -83,4 +83,32 @@ authRouter.post('/login', async (req, res) => {
 	}
 });
 
+authRouter.post('/refresh-token', async (req, res) => {
+	try {
+		const { refreshToken } = req.body;
+		if (!refreshToken) {
+			return sendError(res, 'Refresh token is required', 400);
+		}
+
+		const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+		if (!decoded) {
+			return sendError(res, 'Invalid refresh token', 400);
+		}
+
+		const accessToken = jwt.sign(
+			{ userId: decoded.userId, email: decoded.email },
+			process.env.JWT_SECRET,
+			{ expiresIn: '1h' }
+		);
+
+		return sendSuccess(
+			res,
+			{ accessToken, refreshToken },
+			'New access token generated successfully'
+		);
+	} catch (e) {
+		return sendError(res, { error: `Error in generating new access token : ${e.message}` }, 500);
+	}
+});
+
 module.exports = authRouter;

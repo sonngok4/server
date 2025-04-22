@@ -6,7 +6,7 @@ const authenticateToken = require('../middlewares/auth');
 const { sendSuccess, sendError } = require('../utils/responseUtils');
 
 // Create or update rating
-router.post('/ratings', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
     try {
         const { productId, rating, comment } = req.body;
 

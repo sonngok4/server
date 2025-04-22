@@ -22,7 +22,7 @@ const orderSchema = mongoose.Schema({
                     message: '{VALUE} is not an integer value'
                 }
             },
-            price: {
+            totalPrice: {
                 type: Number,
                 required: true,
             },
@@ -37,6 +37,10 @@ const orderSchema = mongoose.Schema({
     shippingAddress: {
         type: String,
         required: true,
+        default: ''
+    },
+    note: {
+        type: String,
         default: ''
     },
 
