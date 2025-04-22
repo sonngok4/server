@@ -34,7 +34,19 @@ authRouter.post('/register', async (req, res) => {
 		});
 
 		await user.save();
-		return sendSuccess(res, { user: { id: user._id, email, name } }, 'User registered successfully', 201);
+
+		const accessToken = jwt.sign(
+			{ userId: user._id, email: user.email },
+			process.env.JWT_SECRET,
+			{ expiresIn: '1h' }
+		);
+
+		const refreshToken = jwt.sign(
+			{ userId: user._id, email: user.email },
+			process.env.JWT_SECRET,
+			{ expiresIn: '7d' }
+		)
+		return sendSuccess(res, { accessToken, refreshToken, user: { id: user._id, email, name } }, 'User registered successfully', 201);
 	} catch (e) {
 		return sendError(res, { error: `Error in registering user : ${e.message}` }, 500);
 	}
