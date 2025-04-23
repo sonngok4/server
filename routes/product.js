@@ -10,7 +10,7 @@ productRouter.get('/category/:category', async (req, res) => {
 		if (req.query?.category) {
 			query.category = req.query.category;
 		}
-		const products = await Product.find(query);
+		const products = await Product.find(query).populate({ path: 'category', populate: 'parent' }).populate('ratings');
 		return sendSuccess(res, products, 'Products fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
@@ -20,7 +20,7 @@ productRouter.get('/category/:category', async (req, res) => {
 
 productRouter.get('/', async (req, res) => {
 	try {
-		const products = await Product.find({});
+		const products = await Product.find({}).populate({ path: 'category', populate: 'parent' }).populate('ratings');
 		return sendSuccess(res, products, 'Products fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
@@ -30,7 +30,7 @@ productRouter.get('/', async (req, res) => {
 productRouter.get('/:productId', async (req, res) => {
 	try {
 		const { productId } = req.params;
-		const product = await Product.findById(productId);
+		const product = await Product.findById(productId).populate({ path: 'category', populate: 'parent' }).populate('ratings');
 		if (!product) {
 			return sendError(res, 'Product not found', 404);
 		}
@@ -44,7 +44,7 @@ productRouter.get('/:productId', async (req, res) => {
 productRouter.get('/get-similar-products/:category', async (req, res) => {
 	try {
 		const { category } = req.params;
-		const products = await Product.find({ category });
+		const products = await Product.find({ category }).populate({ path: 'category', populate: 'parent' }).populate('ratings');
 		return sendSuccess(res, products, 'Similar products fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching similar products : ${e.message}` }, 500);
@@ -57,7 +57,7 @@ productRouter.get('/search/:name', async (req, res) => {
 	try {
 		const products = await Product.find({
 			name: { $regex: req.params.name, $options: 'i' },
-		});
+		}).populate({ path: 'category', populate: 'parent' }).populate('ratings');
 
 		return sendSuccess(res, products, 'Products fetched successfully', 200);
 	} catch (e) {
@@ -69,7 +69,7 @@ productRouter.get('/search/:name', async (req, res) => {
 // get request for deal-of-the-day
 productRouter.get('/deals-of-the-day', async (req, res) => {
 	try {
-		let products = await Product.find({});
+		let products = await Product.find({}).populate({ path: 'category', populate: 'parent' }).populate('ratings');
 
 		products = products.sort((a, b) => {
 			let aSum = 0;
