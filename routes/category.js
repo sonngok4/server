@@ -8,7 +8,7 @@ const Product = require('../models/product');
 router.get('/', async (req, res) => {
     try {
         console.log('Fetching categories...');
-        
+
         const categories = await Category.find({});
         return sendSuccess(res, categories, 'Categories fetched successfully', 200);
     } catch (e) {
@@ -39,8 +39,7 @@ router.get('/home-categories', async (req, res) => {
                     subcategories.map(async (sub) => {
                         const products = await Product.find({ category: sub._id })
                             .limit(10)
-                            .populate('category').populate('ratings');
-
+                            .populate({ path: 'category', populate: { path: 'parent' } }).populate('ratings');
                         return {
                             name: sub.name,
                             slug: sub.slug,
