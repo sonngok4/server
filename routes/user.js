@@ -54,7 +54,28 @@ userRouter.post('/profile', authenticateToken, async (req, res) => {
 // get cart
 userRouter.get('/cart/me', authenticateToken, async (req, res) => {
 	try {
-		const user = await User.findById(req.user);
+		const user = await User.findById(req.user).populate({
+			path: 'cart.product',
+			populate: [
+				{
+					path: 'category',
+					model: 'Category',
+					populate: {
+						path: 'parent',
+						model: 'Category'
+					}
+				},
+				{
+					path: 'ratings',
+					model: 'Rating',
+					populate: {
+						path: 'userId',
+						model: 'User',
+						select: 'name email avatar'
+					}
+				}
+			]
+		});
 		if (!user) {
 			return sendError(res, 'User not found', 404);
 		}
@@ -88,7 +109,28 @@ userRouter.post('/cart/:productId', authenticateToken, async (req, res) => {
 		}
 
 		await user.save();
-		let userSaved = await User.findById(req.user).select('-password -__v -orders -wishlist');
+		let userSaved = await User.findById(req.user).select('-password -__v -orders -wishlist').populate({
+			path: 'cart.product',
+			populate: [
+				{
+					path: 'category',
+					model: 'Category',
+					populate: {
+						path: 'parent',
+						model: 'Category'
+					}
+				},
+				{
+					path: 'ratings',
+					model: 'Rating',
+					populate: {
+						path: 'userId',
+						model: 'User',
+						select: 'name email avatar'
+					}
+				}
+			]
+		});
 		const {cart} = userSaved;
 		return sendSuccess(res, cart, 'Product added to cart', 200);
 	} catch (error) {
@@ -113,7 +155,28 @@ userRouter.put('/cart/:productId', authenticateToken, async (req, res) => {
 		}
 
 		await user.save();
-		const userSaved = await User.findById(req.user).select('-password -__v -orders -wishlist');
+		const userSaved = await User.findById(req.user).select('-password -__v -orders -wishlist').populate({
+			path: 'cart.product',
+			populate: [
+				{
+					path: 'category',
+					model: 'Category',
+					populate: {
+						path: 'parent',
+						model: 'Category'
+					}
+				},
+				{
+					path: 'ratings',
+					model: 'Rating',
+					populate: {
+						path: 'userId',
+						model: 'User',
+						select: 'name email avatar'
+					}
+				}
+			]
+		});
 		const {cart} = userSaved;
 		return sendSuccess(res, cart, 'Cart updated successfully', 200);
 	} catch (error) {
@@ -132,7 +195,28 @@ userRouter.delete('/cart/:productId', authenticateToken, async (req, res) => {
 		user.cart = user.cart.filter(item => item.product.toString() !== productId);
 
 		await user.save();
-		const userSaved = await User.findById(req.user).select('-password -__v -orders -wishlist');
+		const userSaved = await User.findById(req.user).select('-password -__v -orders -wishlist').populate({
+			path: 'cart.product',
+			populate: [
+				{
+					path: 'category',
+					model: 'Category',
+					populate: {
+						path: 'parent',
+						model: 'Category'
+					}
+				},
+				{
+					path: 'ratings',
+					model: 'Rating',
+					populate: {
+						path: 'userId',
+						model: 'User',
+						select: 'name email avatar'
+					}
+				}
+			]
+		});
 		const {cart} = userSaved;
 		return sendSuccess(res, cart, 'Product removed from cart', 200);
 	} catch (error) {
