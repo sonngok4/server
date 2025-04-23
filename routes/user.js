@@ -64,33 +64,76 @@ userRouter.get('/cart/me', authenticateToken, async (req, res) => {
 	}
 });
 
-// update cart
-// if product is already in cart, update quantity
-// if product is not in cart, add it
-// if quantity is 0, remove it
+
 userRouter.post('/cart/:productId', authenticateToken, async (req, res) => {
 	try {
 		const { productId } = req.params;
 		const { quantity } = req.body;
+		if (quantity <= 0) {
+			return sendError(res, 'Quantity must be greater than 0', 400);
+		}
+
+		const user = await User.findById(req.user);
+		if (!user) return sendError(res, 'User not found', 404);
+
+		const product = await Product.findById(productId);
+		if (!product) return sendError(res, 'Product not found', 404);
+
+		const existingItem = user.cart.find(item => item.product.toString() === productId);
+		if (existingItem) {
+			existingItem.quantity += quantity;
+		} else {
+			user.cart.push({ product: productId, quantity });
+		}
+
+		await user.save();
+		return sendSuccess(res, user, 'Product added to cart', 200);
+	} catch (error) {
+		return sendError(res, { error: `Error adding to cart: ${error.message}` }, 500);
+	}
+});
+
+userRouter.put('/cart/:productId', authenticateToken, async (req, res) => {
+	try {
+		const { productId } = req.params;
+		const { quantity } = req.body;
+		const user = await User.findById(req.user);
+		if (!user) return sendError(res, 'User not found', 404);
+
+		const item = user.cart.find(item => item.product.toString() === productId);
+		if (!item) return sendError(res, 'Product not in cart', 404);
+
+		if (quantity <= 0) {
+			user.cart.pull(item);
+		} else {
+			item.quantity = quantity;
+		}
+
+		await user.save();
+		return sendSuccess(res, user, 'Cart updated successfully', 200);
+	} catch (error) {
+		return sendError(res, { error: `Error updating cart: ${error.message}` }, 500);
+	}
+});
+
+userRouter.delete('/cart/:productId', authenticateToken, async (req, res) => {
+	try {
+		const { productId } = req.params;
 		const user = await User.findById(req.user);
 		if (!user) {
 			return sendError(res, 'User not found', 404);
 		}
-		const product = await Product.findById(productId);
-		if (!product) {
-			return sendError(res, 'Product not found', 404);
-		}
-		if (quantity === 0) {
-			user.cart.pull(productId);
-		} else {
-			user.cart.push({ product: productId, quantity });
-		}
+
+		user.cart = user.cart.filter(item => item.product.toString() !== productId);
+
 		await user.save();
-		return sendSuccess(res, user, 'Cart updated successfully', 200);
+		return sendSuccess(res, user, 'Product removed from cart', 200);
 	} catch (error) {
-		return sendError(res, { error: `Error in updating cart: ${error.message}` }, 500);
+		return sendError(res, { error: `Error removing product: ${error.message}` }, 500);
 	}
-})
+});
+
+
 // getting wishList
 userRouter.get('/wishlist', authenticateToken, async (req, res) => {
 	try {
@@ -107,7 +150,7 @@ userRouter.post('/wishlist/:productId', authenticateToken, async (req, res) => {
 	try {
 		const { productId } = req.params;
 		let user = await User.findById(req.user);
-		let {wishList} = user;
+		let { wishList } = user;
 		let isProductFound = false;
 
 		for (let i = 0; i < wishList.length; i++) {
