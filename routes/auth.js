@@ -46,7 +46,7 @@ authRouter.post('/register', async (req, res) => {
 			process.env.JWT_SECRET,
 			{ expiresIn: '7d' }
 		)
-		return sendSuccess(res, { accessToken, refreshToken, user }, 'User registered successfully', 201);
+		return sendSuccess(res, { accessToken, refreshToken, user: { _id: user._id, name: user.name, email: user.email, avatar: user.avatar, role: user.role } }, 'User registered successfully', 201);
 	} catch (e) {
 		return sendError(res, { error: `Error in registering user : ${e.message}` }, 500);
 	}
@@ -62,7 +62,7 @@ authRouter.post('/login', async (req, res) => {
 			return sendError(res, validationResult.message, 400);
 		}
 
-		const user = await User.findOne({ email });
+		const user = await User.findOne({ email }).select('-__v -cart -orders -wishlist');
 
 		if (!user) {
 			return sendError(res, 'Invalid credentials! User not found!', 400);

@@ -10,7 +10,7 @@ const { sendError, sendSuccess } = require('../utils/responseUtils');
 //Get user data
 userRouter.get('/me', authenticateToken, async (req, res) => {
 	try {
-		const user = await User.findById(req.user).select('-password');
+		const user = await User.findById(req.user).select('-password -__v -cart -orders -wishlist');
 		if (!user) {
 			return sendError(res, 'User not found', 404);
 		}
@@ -22,7 +22,7 @@ userRouter.get('/me', authenticateToken, async (req, res) => {
 
 userRouter.get('/profile', authenticateToken, async (req, res) => {
 	try {
-		const user = await User.findById(req.user);
+		const user = await User.findById(req.user).select('-__v -cart -orders -wishlist');;
 		if (!user) {
 			return sendError(res, 'User not found', 404);
 		}
@@ -35,7 +35,7 @@ userRouter.get('/profile', authenticateToken, async (req, res) => {
 userRouter.post('/profile', authenticateToken, async (req, res) => {
 	try {
 		const { name, address, phone } = req.body;
-		const user = await User.findById(req.user);
+		const user = await User.findById(req.user).select('-__v -cart -orders -wishlist');;
 		if (!user) {
 			return sendError(res, 'User not found', 404);
 		}
@@ -58,7 +58,8 @@ userRouter.get('/cart/me', authenticateToken, async (req, res) => {
 		if (!user) {
 			return sendError(res, 'User not found', 404);
 		}
-		return sendSuccess(res, user, 'Cart fetched successfully', 200);
+		const {cart} = user;
+		return sendSuccess(res, cart, 'Cart fetched successfully', 200);
 	} catch (error) {
 		return sendError(res, { error: `Error in getting cart: ${error.message}` }, 500);
 	}
@@ -87,7 +88,9 @@ userRouter.post('/cart/:productId', authenticateToken, async (req, res) => {
 		}
 
 		await user.save();
-		return sendSuccess(res, user, 'Product added to cart', 200);
+		let userSaved = await User.findById(req.user).select('-password -__v -orders -wishlist');
+		const {cart} = userSaved;
+		return sendSuccess(res, cart, 'Product added to cart', 200);
 	} catch (error) {
 		return sendError(res, { error: `Error adding to cart: ${error.message}` }, 500);
 	}
@@ -110,7 +113,9 @@ userRouter.put('/cart/:productId', authenticateToken, async (req, res) => {
 		}
 
 		await user.save();
-		return sendSuccess(res, user, 'Cart updated successfully', 200);
+		const userSaved = await User.findById(req.user).select('-password -__v -orders -wishlist');
+		const {cart} = userSaved;
+		return sendSuccess(res, cart, 'Cart updated successfully', 200);
 	} catch (error) {
 		return sendError(res, { error: `Error updating cart: ${error.message}` }, 500);
 	}
@@ -127,7 +132,9 @@ userRouter.delete('/cart/:productId', authenticateToken, async (req, res) => {
 		user.cart = user.cart.filter(item => item.product.toString() !== productId);
 
 		await user.save();
-		return sendSuccess(res, user, 'Product removed from cart', 200);
+		const userSaved = await User.findById(req.user).select('-password -__v -orders -wishlist');
+		const {cart} = userSaved;
+		return sendSuccess(res, cart, 'Product removed from cart', 200);
 	} catch (error) {
 		return sendError(res, { error: `Error removing product: ${error.message}` }, 500);
 	}
@@ -138,7 +145,11 @@ userRouter.delete('/cart/:productId', authenticateToken, async (req, res) => {
 userRouter.get('/wishlist', authenticateToken, async (req, res) => {
 	try {
 		let user = User.findById(req.user);
-		return sendSuccess(res, user, 'WishList fetched successfully', 200);
+		if (!user) {
+			return sendError(res, 'User not found', 404);
+		}
+		const {wishlist} = user;
+		return sendSuccess(res, wishlist, 'WishList fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching wishList : ${e.message}` }, 500);
 	}
@@ -150,24 +161,24 @@ userRouter.post('/wishlist/:productId', authenticateToken, async (req, res) => {
 	try {
 		const { productId } = req.params;
 		let user = await User.findById(req.user);
-		let { wishList } = user;
+		let { wishlist } = user;
 		let isProductFound = false;
 
-		for (let i = 0; i < wishList.length; i++) {
-			if (wishList[i].equals(productId)) {
+		for (let i = 0; i < wishlist.length; i++) {
+			if (wishlist[i].equals(productId)) {
 				isProductFound = true;
 			}
 		}
 
 		if (isProductFound) {
-			wishList = wishList.filter(item => !item.equals(productId));
+			wishlist = wishlist.filter(item => !item.equals(productId));
 		} else {
-			wishList.push(productId);
+			wishlist.push(productId);
 		}
 
-		user.wishList = wishList;
+		user.wishList = wishlist;
 		user = await user.save();
-		return sendSuccess(res, user, 'WishList updated successfully', 200);
+		return sendSuccess(res, wishlist, 'WishList updated successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in updating wishList : ${e.message}` }, 500);
 	}
@@ -176,7 +187,7 @@ userRouter.post('/wishlist/:productId', authenticateToken, async (req, res) => {
 // add profile picture
 userRouter.post('/profile/picture', authenticateToken, async (req, res) => {
 	try {
-		const user = await User.findById(req.user);
+		const user = await User.findById(req.user).select('-__v -cart -orders -wishlist');
 		if (!user) {
 			return sendError(res, 'User not found', 404);
 		}
@@ -223,7 +234,7 @@ userRouter.post('/profile/picture', authenticateToken, async (req, res) => {
 userRouter.post('/address/save', authenticateToken, async (req, res) => {
 	try {
 		const { address } = req.body;
-		let user = await User.findById(req.user);
+		let user = await User.findById(req.user).select('-__v -cart -orders -wishlist');
 		user.address = address;
 		user = await user.save();
 		return sendSuccess(res, user, 'Address saved successfully', 200);
@@ -289,7 +300,7 @@ userRouter.post('/search-history/add', authenticateToken, async (req, res) => {
 	try {
 		const { searchQuery } = req.body;
 
-		let user = await User.findById(req.user);
+		let user = await User.findById(req.user).select('-__v -cart -orders -wishlist');
 		user.searchHistory.push(searchQuery.trim());
 
 		// user.searchHistory[] = searchQuery;
@@ -322,7 +333,7 @@ userRouter.get('/search-history', authenticateToken, async (req, res) => {
 userRouter.delete('/search-history/delete', authenticateToken, async (req, res) => {
 	try {
 		const { deleteQuery } = req.body;
-		let user = await User.findById(req.user);
+		let user = await User.findById(req.user).select('-__v -cart -orders -wishlist');
 
 		const index = user.searchHistory.indexOf(deleteQuery);
 
@@ -340,7 +351,7 @@ userRouter.delete('/search-history/delete', authenticateToken, async (req, res) 
 
 userRouter.delete('/search-history/clear', authenticateToken, async (req, res) => {
 	try {
-		let user = await User.findById(req.user);
+		let user = await User.findById(req.user).select('-__v -cart -orders -wishlist');
 		user.searchHistory = [];
 
 		//updating the user info
@@ -355,7 +366,7 @@ userRouter.delete('/search-history/clear', authenticateToken, async (req, res) =
 userRouter.put('/shipping-address', authenticateToken, async (req, res) => {
 	try {
 		const { name, phone, address } = req.body;
-		let user = await User.findById(req.user);
+		let user = await User.findById(req.user).select('-__v -cart -orders -wishlist');
 
 		if (name) {
 			user.name = name;
