@@ -3,12 +3,17 @@ const productRouter = express.Router();
 const Product = require('../models/product');
 const authenticateToken = require('../middlewares/auth');
 const { sendSuccess, sendError } = require('../utils/responseUtils');
+const Category = require('../models/category');
 
-productRouter.get('/category/:category', async (req, res) => {
+productRouter.get('/', async (req, res) => {
 	try {
 		let query = {};
 		if (req.query?.category) {
-			query.category = req.query.category;
+			const category = await Category.findOne({ slug: req.query.category });
+			if (!category) {
+				return sendError(res, { error: 'Category not found' }, 404);
+			}
+			query.category = category._id;
 		}
 		const products = await Product.find(query).populate({ path: 'category', populate: 'parent' }).populate('ratings');
 		return sendSuccess(res, products, 'Products fetched successfully', 200);
@@ -18,14 +23,14 @@ productRouter.get('/category/:category', async (req, res) => {
 });
 
 
-productRouter.get('/', async (req, res) => {
-	try {
-		const products = await Product.find({}).populate({ path: 'category', populate: 'parent' }).populate('ratings');
-		return sendSuccess(res, products, 'Products fetched successfully', 200);
-	} catch (e) {
-		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
-	}
-});
+// productRouter.get('/', async (req, res) => {
+// 	try {
+// 		const products = await Product.find({}).populate({ path: 'category', populate: 'parent' }).populate('ratings');
+// 		return sendSuccess(res, products, 'Products fetched successfully', 200);
+// 	} catch (e) {
+// 		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
+// 	}
+// });
 
 productRouter.get('/:productId', async (req, res) => {
 	try {
