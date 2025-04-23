@@ -32,166 +32,101 @@ userRouter.get('/profile', authenticateToken, async (req, res) => {
 	}
 });
 
-userRouter.put('/cart/update', authenticateToken, async (req, res) => {
+userRouter.post('/profile', authenticateToken, async (req, res) => {
 	try {
-		const { cart } = req.body;
+		const { name, address, phone } = req.body;
 		const user = await User.findById(req.user);
-		user.cart = cart;
+		if (!user) {
+			return sendError(res, 'User not found', 404);
+		}
+
+		user.name = name;
+		user.address = address;
+		user.phone = phone;
+
+		await user.save();
+		return sendSuccess(res, user, 'User data fetched successfully', 200);
+	} catch (error) {
+		return sendError(res, { error: `Error in getting user data: ${error.message}` }, 500);
+	}
+});
+
+// get cart
+userRouter.get('/cart/me', authenticateToken, async (req, res) => {
+	try {
+		const user = await User.findById(req.user);
+		if (!user) {
+			return sendError(res, 'User not found', 404);
+		}
+		return sendSuccess(res, user, 'Cart fetched successfully', 200);
+	} catch (error) {
+		return sendError(res, { error: `Error in getting cart: ${error.message}` }, 500);
+	}
+});
+
+// update cart
+// if product is already in cart, update quantity
+// if product is not in cart, add it
+// if quantity is 0, remove it
+userRouter.post('/cart/:productId', authenticateToken, async (req, res) => {
+	try {
+		const { productId } = req.params;
+		const { quantity } = req.body;
+		const user = await User.findById(req.user);
+		if (!user) {
+			return sendError(res, 'User not found', 404);
+		}
+		const product = await Product.findById(productId);
+		if (!product) {
+			return sendError(res, 'Product not found', 404);
+		}
+		if (quantity === 0) {
+			user.cart.pull(productId);
+		} else {
+			user.cart.push({ product: productId, quantity });
+		}
 		await user.save();
 		return sendSuccess(res, user, 'Cart updated successfully', 200);
 	} catch (error) {
 		return sendError(res, { error: `Error in updating cart: ${error.message}` }, 500);
 	}
-});
-
-// add item to cart
-userRouter.post('/cart/add/:id', authenticateToken, async (req, res) => {
-	try {
-		const { id } = req.params;
-		const product = await Product.findById(id);
-
-		let user = await User.findById(req.user);
-
-		// if cart is empty push the product in "cart" array of user
-		// and update the quatity as 1
-		if (user.cart.length == 0) {
-			user.cart.push({ product, quantity: 1 });
-		} else {
-			;
-			let isProductFound = false;
-
-			for (let i = 0; i < user.cart.length; i++) {
-				// if the product's id matches the id of product in cart
-				if (user.cart[i].product._id.equals(product._id)) {
-					isProductFound = true;
-				}
-			}
-
-			// if product is already in the cart, increament its quantity by 1
-			if (isProductFound) {
-				// find the product in the cart, i.e. productFound
-				let productFound = user.cart.find(productItem =>
-					productItem.product._id.equals(product._id),
-				);
-				// console.log('====> Product found in cart already, increamenting by 1');
-				// increament the quantity by 1
-				productFound.quantity += 1;
-			} else {
-				// if not found in the cart [happens when cart.length is NOT 0, and new item is added]
-				// add the product for the first time in cart
-				// and update quantity as 1
-				user.cart.push({ product, quantity: 1 });
-			}
-		}
-		//updating the user info
-		user = await user.save();
-		return sendSuccess(res, user, 'Product added to cart successfully', 200);
-	} catch (e) {
-		return sendError(res, { error: `Error in adding product to cart : ${e.message}` }, 500);
-	}
-});
-
-userRouter.delete('/cart/remove/:id', authenticateToken, async (req, res) => {
-	try {
-		const { id } = req.params;
-		const product = await Product.findById(id);
-
-		//req.user is the user id provided by mongoDB
-		let user = await User.findById(req.user);
-
-		for (let i = 0; i < user.cart.length; i++) {
-			// if the product's id matches the id of product in cart
-			if (user.cart[i].product._id.equals(product._id)) {
-				// Array.splice(start: number, deleteCount? )
-				// splice(starIndex, how Many to Delete)
-				if (user.cart[i].quantity == 1) {
-					user.cart.splice(i, 1);
-				} else {
-					user.cart[i].quantity -= 1;
-				}
-			}
-		}
-		//updating the user info
-		user = await user.save();
-		return sendSuccess(res, user, 'Product removed from cart successfully', 200);
-	} catch (e) {
-		return sendError(res, { error: `Error in removing product from cart : ${e.message}` }, 500);
-	}
-});
-
+})
 // getting wishList
 userRouter.get('/wishlist', authenticateToken, async (req, res) => {
 	try {
 		let user = User.findById(req.user);
-		let wishList = [];
-		wishList = user.wishList;
-		return sendSuccess(res, wishList, 'WishList fetched successfully', 200);
+		return sendSuccess(res, user, 'WishList fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching wishList : ${e.message}` }, 500);
 	}
 });
-
-// add item to wishList
-userRouter.post('/wishlist/add/:id', authenticateToken, async (req, res) => {
+// toggle wishlist
+// if product is already in wishlist, remove it
+// if product is not in wishlist, add it
+userRouter.post('/wishlist/:productId', authenticateToken, async (req, res) => {
 	try {
-		const { id } = req.params;
-		const product = await Product.findById(id);
-		//req.user is the user id provided by mongoDB
+		const { productId } = req.params;
 		let user = await User.findById(req.user);
+		let {wishList} = user;
+		let isProductFound = false;
 
-		// if cart is empty push the product in "cart" array of user
-		// and update the quantity as 1
-		if (user.wishList.length == 0) {
-			// console.log("====> User wishList length 0: incrementing to 1");
-			// product is ID of the product, whereas { product } is the product object
-			// don't use this for sending product : user.wishList.push(product);
-			user.wishList.push({ product });
+		for (let i = 0; i < wishList.length; i++) {
+			if (wishList[i].equals(productId)) {
+				isProductFound = true;
+			}
+		}
+
+		if (isProductFound) {
+			wishList = wishList.filter(item => !item.equals(productId));
 		} else {
-			// console.log("====> User wishList length non-zero: incrementing to 1");
-			let isProductFound = false;
-
-			for (let i = 0; i < user.wishList.length; i++) {
-				// if the product's id matches the id of product in cart
-				if (user.wishList[i].product._id.equals(product._id)) {
-					isProductFound = true;
-				}
-			}
-
-			// if product is already in the cart, increament its quantity by 1
-			if (!isProductFound) {
-				user.wishList.push({ product });
-			}
+			wishList.push(productId);
 		}
-		//updating the user info
+
+		user.wishList = wishList;
 		user = await user.save();
-		return sendSuccess(res, user, 'Product added to wishList successfully', 200);
+		return sendSuccess(res, user, 'WishList updated successfully', 200);
 	} catch (e) {
-		return sendError(res, { error: `Error in adding product to wishList : ${e.message}` }, 500);
-	}
-});
-
-// remove item from wish list
-userRouter.delete('/wishlist/remove/:id', authenticateToken, async (req, res) => {
-	try {
-		const { id } = req.params;
-
-		const product = await Product.findById(id);
-		//req.user is the user id provided by mongoDB
-		let user = await User.findById(req.user);
-
-		for (let i = 0; i < user.wishList.length; i++) {
-			// if the product's id matches the id of product in cart
-			if (user.wishList[i].product._id.equals(product._id)) {
-				// Array.splice(start: number, deleteCount? )
-				user.wishList.splice(i, 1);
-				break;
-			}
-		}
-		//updating the user info
-		user = await user.save();
-		return sendSuccess(res, user, 'Product removed from wishList successfully', 200);
-	} catch (e) {
-		return sendError(res, { error: `Error in removing product from wishList : ${e.message}` }, 500);
+		return sendError(res, { error: `Error in updating wishList : ${e.message}` }, 500);
 	}
 });
 
