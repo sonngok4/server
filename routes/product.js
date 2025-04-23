@@ -15,7 +15,15 @@ productRouter.get('/', async (req, res) => {
 			}
 			query.category = category._id;
 		}
-		const products = await Product.find(query).populate({ path: 'category', populate: 'parent' }).populate('ratings');
+		const products = await Product.find(query).populate({ path: 'category', populate: 'parent' }).populate({
+			path: 'ratings',
+			model: 'Rating',
+			populate: {
+				path: 'userId',
+				model: 'User',
+				select: 'name email avatar'
+			}
+		});
 		return sendSuccess(res, products, 'Products fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
@@ -35,7 +43,15 @@ productRouter.get('/', async (req, res) => {
 productRouter.get('/:productId', async (req, res) => {
 	try {
 		const { productId } = req.params;
-		const product = await Product.findById(productId).populate({ path: 'category', populate: 'parent' }).populate('ratings');
+		const product = await Product.findById(productId).populate({ path: 'category', populate: 'parent' }).populate({
+			path: 'ratings',
+			model: 'Rating',
+			populate: {
+				path: 'userId',
+				model: 'User',
+				select: 'name email avatar'
+			}
+		});
 		if (!product) {
 			return sendError(res, 'Product not found', 404);
 		}
@@ -49,7 +65,15 @@ productRouter.get('/:productId', async (req, res) => {
 productRouter.get('/get-similar-products/:category', async (req, res) => {
 	try {
 		const { category } = req.params;
-		const products = await Product.find({ category }).populate({ path: 'category', populate: 'parent' }).populate('ratings');
+		const products = await Product.find({ category }).populate({ path: 'category', populate: 'parent' }).populate({
+			path: 'ratings',
+			model: 'Rating',
+			populate: {
+				path: 'userId',
+				model: 'User',
+				select: 'name email avatar'
+			}
+		});
 		return sendSuccess(res, products, 'Similar products fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching similar products : ${e.message}` }, 500);
@@ -62,7 +86,15 @@ productRouter.get('/search/:name', async (req, res) => {
 	try {
 		const products = await Product.find({
 			name: { $regex: req.params.name, $options: 'i' },
-		}).populate({ path: 'category', populate: 'parent' }).populate('ratings');
+		}).populate({ path: 'category', populate: 'parent' }).populate({
+			path: 'ratings',
+			model: 'Rating',
+			populate: {
+				path: 'userId',
+				model: 'User',
+				select: 'name email avatar'
+			}
+		});
 
 		return sendSuccess(res, products, 'Products fetched successfully', 200);
 	} catch (e) {
@@ -74,8 +106,15 @@ productRouter.get('/search/:name', async (req, res) => {
 // get request for deal-of-the-day
 productRouter.get('/deals-of-the-day', async (req, res) => {
 	try {
-		let products = await Product.find({}).populate({ path: 'category', populate: 'parent' }).populate('ratings');
-
+		let products = await Product.find({}).populate({ path: 'category', populate: 'parent' }).populate({
+			path: 'ratings',
+			model: 'Rating',
+			populate: {
+				path: 'userId',
+				model: 'User',
+				select: 'name email avatar'
+			}
+		});
 		products = products.sort((a, b) => {
 			let aSum = 0;
 			let bSum = 0;

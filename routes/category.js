@@ -39,7 +39,15 @@ router.get('/home-categories', async (req, res) => {
                     subcategories.map(async (sub) => {
                         const products = await Product.find({ category: sub._id })
                             .limit(10)
-                            .populate({ path: 'category', populate: { path: 'parent' } }).populate('ratings');
+                            .populate({ path: 'category', populate: 'parent' }).populate({
+                                path: 'ratings',
+                                model: 'Rating',
+                                populate: {
+                                    path: 'userId',
+                                    model: 'User',
+                                    select: 'name email avatar'
+                                }
+                            });
                         return {
                             name: sub.name,
                             slug: sub.slug,
