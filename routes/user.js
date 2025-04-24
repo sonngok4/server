@@ -79,7 +79,7 @@ userRouter.get('/cart/me', authenticateToken, async (req, res) => {
 		if (!user) {
 			return sendError(res, 'User not found', 404);
 		}
-		const {cart} = user;
+		const { cart } = user;
 		return sendSuccess(res, cart, 'Cart fetched successfully', 200);
 	} catch (error) {
 		return sendError(res, { error: `Error in getting cart: ${error.message}` }, 500);
@@ -131,7 +131,7 @@ userRouter.post('/cart/:productId', authenticateToken, async (req, res) => {
 				}
 			]
 		});
-		const {cart} = userSaved;
+		const { cart } = userSaved;
 		return sendSuccess(res, cart, 'Product added to cart', 200);
 	} catch (error) {
 		return sendError(res, { error: `Error adding to cart: ${error.message}` }, 500);
@@ -177,7 +177,7 @@ userRouter.put('/cart/:productId', authenticateToken, async (req, res) => {
 				}
 			]
 		});
-		const {cart} = userSaved;
+		const { cart } = userSaved;
 		return sendSuccess(res, cart, 'Cart updated successfully', 200);
 	} catch (error) {
 		return sendError(res, { error: `Error updating cart: ${error.message}` }, 500);
@@ -217,12 +217,51 @@ userRouter.delete('/cart/:productId', authenticateToken, async (req, res) => {
 				}
 			]
 		});
-		const {cart} = userSaved;
+		const { cart } = userSaved;
 		return sendSuccess(res, cart, 'Product removed from cart', 200);
 	} catch (error) {
 		return sendError(res, { error: `Error removing product: ${error.message}` }, 500);
 	}
 });
+
+// clear all products from cart
+userRouter.delete('/cart/me', authenticateToken, async (req, res) => {
+	try {
+		const user = await User.findById(req.user);
+		if (!user) {
+			return sendError(res, 'User not found', 404);
+		}
+		user.cart = [];
+		await user.save();
+		const userSaved = await User.findById(req.user).select('-password -__v -orders -wishlist').populate({
+			path: 'cart.product',
+			populate: [
+				{
+					path: 'category',
+					model: 'Category',
+					populate: {
+						path: 'parent',
+						model: 'Category'
+					}
+				},
+				{
+					path: 'ratings',
+					model: 'Rating',
+					populate: {
+						path: 'userId',
+						model: 'User',
+						select: 'name email avatar'
+					}
+				}
+			]
+		});
+		const { cart } = userSaved;
+		return sendSuccess(res, cart, 'Cart cleared successfully', 200);
+	} catch (error) {
+		return sendError(res, { error: `Error clearing cart: ${error.message}` }, 500);
+	}
+});
+
 
 
 // getting wishList
@@ -232,7 +271,7 @@ userRouter.get('/wishlist', authenticateToken, async (req, res) => {
 		if (!user) {
 			return sendError(res, 'User not found', 404);
 		}
-		const {wishlist} = user;
+		const { wishlist } = user;
 		return sendSuccess(res, wishlist, 'WishList fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching wishList : ${e.message}` }, 500);
