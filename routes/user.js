@@ -459,7 +459,7 @@ userRouter.post('/place-order', authenticateToken, async (req, res) => {
 				}
 			]
 		});
-		return sendSuccess(res, { order: ordered }, 'Order placed successfully', 200);
+		return sendSuccess(res, { order: ordered }, 'Order placed successfully', 201);
 	} catch (e) {
 		return sendError(res, { error: `Error in placing order : ${e.message}` }, 500);
 	}
