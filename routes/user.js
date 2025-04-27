@@ -412,7 +412,9 @@ userRouter.post('/place-order', authenticateToken, async (req, res) => {
 				return sendError(res, `Product not found: ${item.product}`, 404);
 			}
 
-			const {quantity} = item;
+			const { quantity } = item;
+			productData.stock -= quantity;
+			await productData.save();
 			const totalPrice = productData.price * quantity;
 
 			orderProducts.push({
@@ -432,6 +434,9 @@ userRouter.post('/place-order', authenticateToken, async (req, res) => {
 			paymentMethod,
 			note
 		});
+
+		user.orders.push(order._id);
+		await user.save();
 
 		return sendSuccess(res, order, 'Order placed successfully', 200);
 	} catch (e) {
