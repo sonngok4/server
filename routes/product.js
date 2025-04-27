@@ -36,9 +36,9 @@ productRouter.get('/search', async (req, res) => {
 		const { q: query } = req.query;
 
 		// add search history
-		let user = await User.findById(req.user);
-		user.searchHistory.push(query);
-		user = await user.save();
+		// let user = await User.findById(req.user);
+		// user.searchHistory.push(query);
+		// user = await user.save();
 
 		const products = await Product.aggregate([
 			// Join với collection Category
