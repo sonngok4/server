@@ -435,10 +435,31 @@ userRouter.post('/place-order', authenticateToken, async (req, res) => {
 			note
 		});
 
-		user.orders.push(order._id);
+		user.orders.push(order);
 		await user.save();
-
-		return sendSuccess(res, order, 'Order placed successfully', 200);
+		const ordered = await Order.findById(order._id).populate({
+			path: 'products.product',
+			populate: [
+				{
+					path: 'category',
+					model: 'Category',
+					populate: {
+						path: 'parent',
+						model: 'Category'
+					}
+				},
+				{
+					path: 'ratings',
+					model: 'Rating',
+					populate: {
+						path: 'userId',
+						model: 'User',
+						select: 'name email avatar'
+					}
+				}
+			]
+		});
+		return sendSuccess(res, { order: ordered }, 'Order placed successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in placing order : ${e.message}` }, 500);
 	}
@@ -449,7 +470,31 @@ userRouter.post('/place-order', authenticateToken, async (req, res) => {
 userRouter.get('/orders/me', authenticateToken, async (req, res) => {
 	try {
 		// const { id } = req.body;
-		let orders = await Order.find({ userId: req.user });
+		let orders = await Order.find({ user: req.user }).populate({
+			path: 'products.product',
+			populate: [
+				{
+					path: 'category',
+					model: 'Category',
+					populate: {
+						path: 'parent',
+						model: 'Category'
+					}
+				},
+				{
+					path: 'ratings',
+					model: 'Rating',
+					populate: {
+						path: 'userId',
+						model: 'User',
+						select: 'name email avatar'
+					}
+				}
+			]
+		});
+		if (!orders) {
+			return sendError(res, 'Orders not found', 404);
+		}
 		return sendSuccess(res, orders, 'Orders fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching orders : ${e.message}` }, 500);
