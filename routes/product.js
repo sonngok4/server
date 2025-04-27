@@ -30,15 +30,52 @@ productRouter.get('/', async (req, res) => {
 	}
 });
 
+productRouter.get('/search', async (req, res) => {
+	try {
+		const { q: query } = req.query;
 
-// productRouter.get('/', async (req, res) => {
-// 	try {
-// 		const products = await Product.find({}).populate({ path: 'category', populate: 'parent' }).populate('ratings');
-// 		return sendSuccess(res, products, 'Products fetched successfully', 200);
-// 	} catch (e) {
-// 		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
-// 	}
-// });
+		const products = await Product.aggregate([
+			// Join với collection Category
+			{
+				$lookup: {
+					from: 'categories',
+					localField: 'category',
+					foreignField: '_id',
+					as: 'category',
+				}
+			},
+			// category là mảng sau khi $lookup, nên lấy phần tử đầu tiên
+			{ $unwind: '$category' },
+
+			// Lọc theo tên, brandName hoặc category.name
+			{
+				$match: {
+					$or: [
+						{ name: { $regex: query, $options: 'i' } },
+						{ brandName: { $regex: query, $options: 'i' } },
+						{ 'category.name': { $regex: query, $options: 'i' } }
+					]
+				}
+			}
+		]);
+
+		// Populate ratings như cũ (sau khi aggregate xong)
+		await Product.populate(products, [
+			{
+				path: 'ratings',
+				model: 'Rating',
+				populate: {
+					path: 'userId',
+					model: 'User',
+					select: 'name email avatar'
+				}
+			}
+		]);
+		return sendSuccess(res, products, 'Products fetched successfully', 200);
+	} catch (e) {
+		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
+	}
+});
 
 productRouter.get('/:productId', async (req, res) => {
 	try {
