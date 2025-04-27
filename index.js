@@ -48,11 +48,6 @@ app.use(
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-app.use(fileUpload({
-	useTempFiles: true,
-	tempFileDir: '/tmp/'
-}));
-
 app.use(cookieParser());
 app.use(debugMiddleware);
 

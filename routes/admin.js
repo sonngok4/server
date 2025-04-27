@@ -5,47 +5,51 @@ const Product = require('../models/product');
 const Order = require('../models/order');
 const cloudinary = require('../configs/cloudinary');
 const { sendSuccess, sendError } = require('../utils/responseUtils');
+const upload = require('../middlewares/upload');
+const streamifier = require('streamifier');
+
 
 // Create a new product
-adminRouter.post('/product/add', admin, async (req, res) => {
+adminRouter.post('/product/add', admin, upload.array('images', 10), async (req, res) => {
 	try {
 
 		if (!req.files || req.files.length === 0) {
 			return sendError(res, 'Please upload at least one image', 400);
 		}
 
+		const {
+			name,
+			description,
+			brandName,
+			stock,
+			price,
+			category,
+		} = req.body;
+
 		try {
-			// Upload images to Cloudinary
-			const uploadPromises = req.files.map(async file => {
-				const b64 = Buffer.from(file.buffer).toString('base64');
-				const dataURI = 'data:' + file.mimetype + ';base64,' + b64;
+			const results = [];
+			const folderProductName = name.trim().toLowerCase().replace(/\s+/g, '-');
 
-				return cloudinary.uploader.upload(dataURI, {
-					folder: 'motbook/products',
-					resource_type: 'auto',
-					transformation: [
-						{ width: 800, crop: 'scale' },
-						{ quality: 'auto' },
-					],
+			for (const file of req.files) {
+				const result = await new Promise((resolve, reject) => {
+					const stream = cloudinary.uploader.upload_stream(
+						{ folder: `eshop/products/${folderProductName}` },
+						(err, result) => err ? reject(err) : resolve(result)
+					);
+					streamifier.createReadStream(file.buffer).pipe(stream);
 				});
-			});
 
-			const results = await Promise.all(uploadPromises);
+				results.push({ originalName: file.originalname, public_id: result.public_id, url: result.secure_url });
+			}
 
 			// Transform Cloudinary results to image data
 			const images = results.map(result => ({
-				url: result.secure_url,
 				public_id: result.public_id,
+				url: result.url,
 			}));
 
-			const {
-				name,
-				description,
-				brandName,
-				stock,
-				price,
-				category,
-			} = req.body;
+			console.log(`images: ${JSON.stringify(images)}`);
+			
 
 			const product = new Product({
 				name,
