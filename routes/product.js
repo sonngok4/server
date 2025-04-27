@@ -35,10 +35,9 @@ productRouter.get('/search', async (req, res) => {
 	try {
 		const { q: query } = req.query;
 
-		// add search history
-		// Kiểm tra xem người dùng có đăng nhập không (req.user là user đã đăng nhập)
+		// add search history (Chỉ lưu nếu có người dùng đã đăng nhập)
 		if (req.user) {
-			// Nếu người dùng đã đăng nhập, tìm người dùng và lưu lịch sử tìm kiếm
+			// Tìm người dùng trong cơ sở dữ liệu
 			let user = await User.findById(req.user);
 			if (!user) {
 				return sendError(res, { error: 'User not found' }, 404);
@@ -49,11 +48,12 @@ productRouter.get('/search', async (req, res) => {
 			await user.save();
 		}
 
+		// Dùng aggregation để tìm kiếm sản phẩm theo query
 		const products = await Product.aggregate([
 			// Join với collection Category
 			{
 				$lookup: {
-					from: 'categories',
+					from: 'categories', // Tên collection trong MongoDB
 					localField: 'category',
 					foreignField: '_id',
 					as: 'category',
@@ -71,10 +71,21 @@ productRouter.get('/search', async (req, res) => {
 						{ 'category.name': { $regex: query, $options: 'i' } }
 					]
 				}
-			}
+			},
+			// Populate thông tin parent trong category
+			{
+				$lookup: {
+					from: 'categories',
+					localField: 'category.parent',
+					foreignField: '_id',
+					as: 'category.parent',
+				}
+			},
+			// Nếu category có parent thì lấy thông tin của parent
+			{ $unwind: { path: '$category.parent', preserveNullAndEmptyArrays: true } }
 		]);
 
-		// Populate ratings như cũ (sau khi aggregate xong)
+		// Populate ratings (vẫn giữ như cũ)
 		await Product.populate(products, [
 			{
 				path: 'ratings',
@@ -86,11 +97,14 @@ productRouter.get('/search', async (req, res) => {
 				}
 			}
 		]);
+
+		// Trả về kết quả tìm kiếm
 		return sendSuccess(res, products, 'Products fetched successfully', 200);
 	} catch (e) {
-		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
+		return sendError(res, { error: `Error in fetching products: ${e.message}` }, 500);
 	}
 });
+
 
 productRouter.get('/:productId', async (req, res) => {
 	try {
