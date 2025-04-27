@@ -4,6 +4,7 @@ const Product = require('../models/product');
 const authenticateToken = require('../middlewares/auth');
 const { sendSuccess, sendError } = require('../utils/responseUtils');
 const Category = require('../models/category');
+const User = require('../models/user');
 
 productRouter.get('/', async (req, res) => {
 	try {
@@ -33,6 +34,11 @@ productRouter.get('/', async (req, res) => {
 productRouter.get('/search', async (req, res) => {
 	try {
 		const { q: query } = req.query;
+
+		// add search history
+		let user = await User.findById(req.user);
+		user.searchHistory.push(query);
+		user = await user.save();
 
 		const products = await Product.aggregate([
 			// Join với collection Category
