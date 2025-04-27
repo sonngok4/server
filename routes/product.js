@@ -36,9 +36,18 @@ productRouter.get('/search', async (req, res) => {
 		const { q: query } = req.query;
 
 		// add search history
-		// let user = await User.findById(req.user);
-		// user.searchHistory.push(query);
-		// user = await user.save();
+		// Kiểm tra xem người dùng có đăng nhập không (req.user là user đã đăng nhập)
+		if (req.user) {
+			// Nếu người dùng đã đăng nhập, tìm người dùng và lưu lịch sử tìm kiếm
+			let user = await User.findById(req.user);
+			if (!user) {
+				return sendError(res, { error: 'User not found' }, 404);
+			}
+
+			// Thêm query vào lịch sử tìm kiếm của người dùng
+			user.searchHistory.push(query);
+			await user.save();
+		}
 
 		const products = await Product.aggregate([
 			// Join với collection Category
