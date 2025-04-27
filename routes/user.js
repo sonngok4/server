@@ -396,40 +396,49 @@ userRouter.post('/wishlist/:productId', authenticateToken, async (req, res) => {
 // order product
 userRouter.post('/place-order', authenticateToken, async (req, res) => {
 	try {
-		// const { id } = req.body;
-		const { orderRequest, totalAmount } = req.body;
-		const { orderItems, shippingAddress, paymentMethod, note } = orderRequest;
-		// orderItems = [{ product, quantity }]
-		const products = [];
-		for (let i = 0; i < orderItems.length; i++) {
-			const product = await Product.findById(orderItems[i].product._id);
-			console.log('====> Product:', product);
+		const { products, shippingAddress, paymentMethod, note } = req.body;
 
-			if (!product) {
-				return sendError(res, 'Product not found', 404);
-			}
-			products.push({
-				product: product,
-				quantity: orderItems[i].quantity,
-				totalPrice: product.price * orderItems[i].quantity,
-			});
+		const user = await User.findById(req.user);
+		if (!user) {
+			return sendError(res, 'User not found', 404);
 		}
-		let user = await User.findById(req.user);
-		let order = new Order({
-			user,
-			products,
+
+		let orderProducts = [];
+		let totalAmount = 0;
+
+		for (const item of products) {
+			const productData = await Product.findById(item.product);
+			if (!productData) {
+				return sendError(res, `Product not found: ${item.product}`, 404);
+			}
+
+			const {quantity} = item;
+			const totalPrice = productData.price * quantity;
+
+			orderProducts.push({
+				product: productData._id,
+				quantity,
+				totalPrice
+			});
+
+			totalAmount += totalPrice;
+		}
+
+		const order = await Order.create({
+			user: user._id,
+			products: orderProducts,
 			totalAmount,
 			shippingAddress,
 			paymentMethod,
-			note,
-			status: 'Pending',
+			note
 		});
-		order = await order.save();
+
 		return sendSuccess(res, order, 'Order placed successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in placing order : ${e.message}` }, 500);
 	}
 });
+
 
 // getting all orders
 userRouter.get('/orders/me', authenticateToken, async (req, res) => {
