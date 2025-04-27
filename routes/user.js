@@ -501,6 +501,42 @@ userRouter.get('/orders/me', authenticateToken, async (req, res) => {
 	}
 });
 
+
+// Get order details
+userRouter.get('/orders/:orderId', authenticateToken, async (req, res) => {
+	try {
+		const { orderId } = req.params;
+		const order = await Order.findById(orderId).populate({
+			path: 'products.product',
+			populate: [
+				{
+					path: 'category',
+					model: 'Category',
+					populate: {
+						path: 'parent',
+						model: 'Category'
+					}
+				},
+				{
+					path: 'ratings',
+					model: 'Rating',
+					populate: {
+						path: 'userId',
+						model: 'User',
+						select: 'name email avatar'
+					}
+				}
+			]
+		});
+		if (!order) {
+			return sendError(res, 'Order not found', 404);
+		}
+		return sendSuccess(res, order, 'Order fetched successfully', 200);
+	} catch (e) {
+		return sendError(res, { error: `Error in fetching order : ${e.message}` }, 500);
+	}
+});
+
 // search history
 // add search history
 userRouter.post('/search-history/add', authenticateToken, async (req, res) => {
