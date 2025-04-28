@@ -24,7 +24,7 @@ productRouter.get('/', async (req, res) => {
 				model: 'User',
 				select: 'name email avatar'
 			}
-		});
+		}).limit(9);
 		return sendSuccess(res, products, 'Products fetched successfully', 200);
 	} catch (e) {
 		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
