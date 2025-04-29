@@ -9,6 +9,8 @@ const User = require('../models/user');
 productRouter.get('/', async (req, res) => {
 	try {
 		let query = {};
+
+		// Lọc theo category nếu có
 		if (req.query?.category) {
 			const category = await Category.findOne({ slug: req.query.category });
 			if (!category) {
@@ -16,18 +18,43 @@ productRouter.get('/', async (req, res) => {
 			}
 			query.category = category._id;
 		}
-		const products = await Product.find(query).populate({ path: 'category', populate: 'parent' }).populate({
-			path: 'ratings',
-			model: 'Rating',
-			populate: {
-				path: 'userId',
-				model: 'User',
-				select: 'name email avatar'
-			}
-		}).limit(9);
-		return sendSuccess(res, products, 'Products fetched successfully', 200);
+
+		// Paging: page & limit
+		const page = parseInt(req.query.page) || 1;
+		const limit = parseInt(req.query.limit) || 9;
+		const skip = (page - 1) * limit;
+
+		const [products, total] = await Promise.all([
+			Product.find(query)
+				.populate({ path: 'category', populate: 'parent' })
+				.populate({
+					path: 'ratings',
+					model: 'Rating',
+					populate: {
+						path: 'userId',
+						model: 'User',
+						select: 'name email avatar'
+					}
+				})
+				.skip(skip)
+				.limit(limit),
+			Product.countDocuments(query)
+		]);
+
+		return sendSuccess(
+			res,
+			{
+				data: products,
+				page,
+				limit,
+				totalPages: Math.ceil(total / limit),
+				totalRecords: total,
+			},
+			'Products fetched successfully',
+			200
+		);
 	} catch (e) {
-		return sendError(res, { error: `Error in fetching products : ${e.message}` }, 500);
+		return sendError(res, { error: `Error in fetching products: ${e.message}` }, 500);
 	}
 });
 

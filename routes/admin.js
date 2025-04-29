@@ -23,7 +23,7 @@ adminRouter.post('/product/add', admin, upload.array('images', 10), async (req, 
 			brandName,
 			stock,
 			price,
-			category,
+			categoryId,
 		} = req.body;
 
 		try {
@@ -49,7 +49,7 @@ adminRouter.post('/product/add', admin, upload.array('images', 10), async (req, 
 			}));
 
 			console.log(`images: ${JSON.stringify(images)}`);
-			
+
 
 			const product = new Product({
 				name,
@@ -58,7 +58,7 @@ adminRouter.post('/product/add', admin, upload.array('images', 10), async (req, 
 				images,
 				stock,
 				price,
-				category,
+				category: categoryId,
 			});
 
 			await product.save();
@@ -202,25 +202,82 @@ adminRouter.put('/product/update', admin, async (req, res) => {
 
 adminRouter.get('/products', admin, async (req, res) => {
 	try {
-		const products = await Product.find({});
+		let query = {};
+
+		// Lọc theo category nếu có
+		if (req.query?.category) {
+			const category = await Category.findOne({ slug: req.query.category });
+			if (!category) {
+				return sendError(res, { error: 'Category not found' }, 404);
+			}
+			query.category = category._id;
+		}
+
+		// Paging: page & limit
+		const page = parseInt(req.query.page) || 1;
+		const limit = parseInt(req.query.limit) || 9;
+		const skip = (page - 1) * limit;
+
+		const [products, total] = await Promise.all([
+			Product.find(query)
+				.populate({ path: 'category', populate: 'parent' })
+				.populate({
+					path: 'ratings',
+					model: 'Rating',
+					populate: {
+						path: 'userId',
+						model: 'User',
+						select: 'name email avatar'
+					}
+				})
+				.skip(skip)
+				.limit(limit),
+			Product.countDocuments(query)
+		]);
 
 		return sendSuccess(
 			res,
-			products,
+			{
+				data: products,
+				page,
+				limit,
+				totalPages: Math.ceil(total / limit),
+				totalRecords: total,
+			},
 			'Products fetched successfully',
-			200,
+			200
 		);
 	} catch (e) {
-		return sendError(
-			res,
-			{ error: `Error in fetching products : ${e.message}` },
-			500,
-		);
+		return sendError(res, { error: `Error in fetching products: ${e.message}` }, 500);
 	}
 });
 
+// get product details
+// api /admin/get-product/:id
+adminRouter.get('/product/:id', admin, async (req, res) => {
+	try {
+		const { id } = req.params;
+		const product = await Product.findById(id).populate({ path: 'category', populate: 'parent' }).populate({
+			path: 'ratings',
+			model: 'Rating',
+			populate: {
+				path: 'userId',
+				model: 'User',
+				select: 'name email avatar'
+			}
+		});
+		if (!product) {
+			return sendError(res, 'Product not found', 404);
+		}
+		return sendSuccess(res, product, 'Product fetched successfully', 200);
+	} catch (e) {
+		return sendError(res, { error: `Error in fetching product : ${e.message}` }, 500);
+	}
+})
+
+
 // delete product
-adminRouter.post('/product/delete/:id', admin, async (req, res) => {
+adminRouter.delete('/product/delete/:id', admin, async (req, res) => {
 	try {
 		const { id } = req.params;
 
@@ -237,8 +294,7 @@ adminRouter.post('/product/delete/:id', admin, async (req, res) => {
 			try {
 				const { public_id } = image;
 
-				await cloudinary.api.delete_resources_by_prefix(public_id);
-				await cloudinary.api.delete_folder(public_id);
+				await cloudinary.api.delete_resources(public_id);
 			} catch (error) {
 				console.error(`Error deleting image ${image}:`, error);
 				return sendError(
@@ -290,24 +346,78 @@ adminRouter.post('/orders/change-status', admin, async (req, res) => {
 	}
 });
 
-//
-adminRouter.get('/orders', admin, async (req, res) => {
+adminRouter.get('/orders/:id?', admin, async (req, res) => {
 	try {
-		const orders = await Order.find({});
+		const { id } = req.params;
+
+		// Return single order if ID is provided
+		if (id) {
+			const order = await Order.findById(id)
+				.populate({
+					path: 'user',
+					select: 'name email'
+				})
+				.populate({
+					path: 'products.product',
+					select: 'name images price'
+				});
+
+			if (!order) {
+				return sendError(res, { error: 'Order not found' }, 404);
+			}
+			return sendSuccess(res, order, 'Order fetched successfully', 200);
+		}
+
+		// Handle pagination and filtering
+		const page = parseInt(req.query.page) || 1;
+		const limit = parseInt(req.query.limit) || 10;
+		const status = req.query.status;
+		const skip = (page - 1) * limit;
+
+		// Build query object
+		const query = {};
+		if (status && status !== 'all') {
+			query.status = status;
+		}
+
+		// Get filtered orders with pagination
+		const [orders, total] = await Promise.all([
+			Order.find(query)
+				.populate({
+					path: 'user',
+					select: 'name email'
+				})
+				.populate({
+					path: 'products.product',
+					select: 'name images price'
+				})
+				.sort({ createdAt: -1 })
+				.skip(skip)
+				.limit(limit),
+			Order.countDocuments(query)
+		]);
+
 		return sendSuccess(
 			res,
-			orders,
+			{
+				data: orders,
+				page,
+				limit,
+				totalPages: Math.ceil(total / limit),
+				totalRecords: total,
+			},
 			'Orders fetched successfully',
-			200,
+			200
 		);
 	} catch (e) {
 		return sendError(
 			res,
-			{ error: `Error in fetching orders : ${e.message}` },
-			500,
+			{ error: `Error in fetching orders: ${e.message}` },
+			500
 		);
 	}
 });
+
 
 // get order details and sales analysis
 
