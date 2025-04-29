@@ -26,7 +26,8 @@ app.use(
 			// Allow localhost and Render frontend
 			const allowedOrigins = [
 				/^http:\/\/localhost:\d+$/, // any localhost with port
-				'https://eshop-o8nb.onrender.com' // your frontend domain on Render
+				'https://eshop-o8nb.onrender.com', // your frontend domain on Render
+				'https://eshop-admin-ld6m.onrender.com'
 			];
 
 			const isAllowed = allowedOrigins.some((allowed) =>
