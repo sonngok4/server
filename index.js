@@ -18,21 +18,28 @@ connectDB();
 app.use(
 	cors({
 		origin: function (origin, callback) {
-			// Allow requests with no origin (like mobile apps or curl requests)
+			// Allow requests with no origin (like mobile apps or curl)
 			if (!origin) {
 				return callback(null, true);
 			}
 
-			// Cho phép mọi localhost với bất kỳ port nào
-			const localhostRegex = /^http:\/\/localhost:\d+$/;
+			// Allow localhost and Render frontend
+			const allowedOrigins = [
+				/^http:\/\/localhost:\d+$/, // any localhost with port
+				'https://eshop-o8nb.onrender.com' // your frontend domain on Render
+			];
 
-			if (localhostRegex.test(origin)) {
+			const isAllowed = allowedOrigins.some((allowed) =>
+				allowed instanceof RegExp ? allowed.test(origin) : allowed === origin
+			);
+
+			if (isAllowed) {
 				callback(null, true);
 			} else {
 				callback(new Error('Not allowed by CORS'));
 			}
 		},
-		credentials: true, // Bật credentials
+		credentials: true,
 		methods: ['GET', 'POST', 'PUT', 'DELETE'],
 		allowedHeaders: [
 			'Content-Type',
@@ -41,7 +48,7 @@ app.use(
 			'x-auth-token',
 			'credentials',
 		],
-	}),
+	})
 );
 
 app.use(express.json({ limit: '50mb' }));
